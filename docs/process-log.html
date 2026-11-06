@@ -1,0 +1,985 @@
+<title>Possession Project Log</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a match-sheet — scoreboard strip on top, tabbed sheet below (log, decisions, next, glossary) */
+:root {
+  --bg: #f5f7f4;
+  --surface: #ffffff;
+  --fg: #17201b;
+  --muted: #5c6a62;
+  --line: #d9e0db;
+  --accent: #1f6b45;      /* pitch green */
+  --accent-soft: #e2efe7;
+  --home: #8a1f3d;        /* garnet, used for "waiting/attention" */
+  --home-soft: #f6e4ea;
+  --away: #2f5d8a;        /* Athletic in the timeline */
+  --dead: #b9c2bc;
+  --amber: #8a5a00;
+  --amber-soft: #fbefd6;
+  --display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #111613; --surface: #18201b; --fg: #e5ece7; --muted: #9aa9a0; --line: #2c3731;
+  --accent: #5fc08c; --accent-soft: #1c3326; --home: #e07a98; --home-soft: #3a1d27;
+  --amber: #e6b552; --amber-soft: #3a2e14; --away: #7fa9d6; --dead: #4a554e; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #111613; --surface: #18201b; --fg: #e5ece7; --muted: #9aa9a0; --line: #2c3731;
+  --accent: #5fc08c; --accent-soft: #1c3326; --home: #e07a98; --home-soft: #3a1d27;
+  --amber: #e6b552; --amber-soft: #3a2e14; --away: #7fa9d6; --dead: #4a554e; color-scheme: dark; }
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font: 15px/1.6 var(--body); }
+.wrap { max-width: 920px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 64px; }
+
+header h1 { font: 700 2.4rem/1 var(--display); letter-spacing: .01em; margin: 0; text-wrap: balance; }
+header p { color: var(--muted); margin: 6px 0 0; }
+.match { font: 600 .8rem var(--display); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+
+.board { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px;
+  background: var(--line); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; margin: 22px 0 26px; }
+.board div { background: var(--surface); padding: 12px 14px; min-width: 0; }
+.board dt { font: 600 .72rem var(--display); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.board dd { margin: 2px 0 0; font: 600 1.5rem/1.2 var(--display); font-variant-numeric: tabular-nums; }
+.board small { display: block; color: var(--muted); font-size: .78rem; }
+@media (max-width: 640px) { .board { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+nav { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 22px; overflow-x: auto; }
+nav button { font: 600 1rem var(--display); letter-spacing: .06em; text-transform: uppercase; background: none; border: 0;
+  color: var(--muted); padding: 10px 14px; border-bottom: 3px solid transparent; cursor: pointer; white-space: nowrap; }
+nav button[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent); }
+nav button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+h2 { font: 700 1.5rem var(--display); margin: 0 0 4px; text-wrap: balance; }
+.lead { color: var(--muted); margin: 0 0 18px; max-width: 65ch; }
+.pill { display: inline-block; font: 500 .72rem var(--mono); padding: 2px 8px; border-radius: 99px; vertical-align: 2px; white-space: nowrap; }
+.done { background: var(--accent-soft); color: var(--accent); }
+.wait { background: var(--home-soft); color: var(--home); }
+.next { background: var(--amber-soft); color: var(--amber); }
+code { font: .88em var(--mono); background: var(--accent-soft); padding: 1px 5px; border-radius: 3px; overflow-wrap: anywhere; }
+
+/* Log: a timeline */
+.log { list-style: none; margin: 0; padding: 0; border-left: 2px solid var(--line); }
+.log li { position: relative; padding: 0 0 20px 20px; max-width: 70ch; }
+.log li::before { content: ""; position: absolute; left: -7px; top: 7px; width: 12px; height: 12px; border-radius: 50%;
+  background: var(--surface); border: 2px solid var(--accent); }
+.log time { font: .78rem var(--mono); color: var(--muted); }
+.log h3 { font: 600 1rem var(--body); margin: 0; }
+.log p { margin: 2px 0 0; color: var(--muted); }
+
+/* Decisions */
+.dec { display: grid; gap: 12px; }
+.dec article { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; min-width: 0; }
+.dec h3 { margin: 0; font: 600 1rem var(--body); display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.dec .id { font: 600 .85rem var(--mono); color: var(--accent); }
+.dec p { margin: 6px 0 0; max-width: 72ch; }
+.dec .why { color: var(--muted); }
+
+/* Next steps */
+.steps { display: grid; gap: 10px; counter-reset: s; }
+.steps article { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 12px; background: var(--surface);
+  border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; }
+.steps article.current { border-color: var(--accent); box-shadow: inset 4px 0 0 var(--accent); }
+.steps .n { font: 700 1.8rem/1 var(--display); color: var(--muted); }
+.steps .current .n { color: var(--accent); }
+.steps h3 { margin: 0; font: 600 1rem var(--body); }
+.steps p { margin: 4px 0 0; color: var(--muted); }
+.steps p b { color: var(--fg); font-weight: 500; }
+.qs { margin-top: 26px; }
+.qs ol { padding-left: 20px; margin: 8px 0 0; }
+.qs li { margin-bottom: 8px; max-width: 70ch; }
+
+/* Glossary */
+.search { width: 100%; max-width: 420px; font: 15px var(--body); padding: 9px 12px; border: 1px solid var(--line);
+  border-radius: 6px; background: var(--surface); color: var(--fg); margin-bottom: 18px; }
+.gsec h3 { font: 600 .8rem var(--display); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin: 22px 0 6px; }
+.gsec dl { margin: 0; }
+.term { padding: 10px 0; border-top: 1px solid var(--line); display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 16px; }
+.term dt { font-weight: 600; }
+.term dd { margin: 0; max-width: 68ch; }
+.term dd .eg { color: var(--muted); }
+.star { font: 500 .7rem var(--mono); color: var(--home); margin-left: 4px; }
+@media (max-width: 640px) { .term { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
+.empty { color: var(--muted); }
+/* Data files */
+.files { display: grid; gap: 10px; }
+.file { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; min-width: 0; }
+.file header { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.file h3 { margin: 0; font: 500 .92rem var(--mono); overflow-wrap: anywhere; }
+.file .meta { color: var(--muted); font-size: .8rem; }
+.file dl { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 4px 12px; margin: 10px 0 0; }
+.file dt { font: 600 .72rem var(--display); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); padding-top: 3px; }
+.file dd { margin: 0; max-width: 68ch; }
+.core { background: var(--accent-soft); color: var(--accent); }
+.help { background: var(--amber-soft); color: var(--amber); }
+.opt, .park { background: var(--line); color: var(--muted); }
+.flow { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 12px 16px; margin-bottom: 18px; }
+.flow pre { margin: 0; font: .78rem/1.5 var(--mono); color: var(--fg); }
+.groupt { font: 600 .8rem var(--display); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin: 22px 0 8px; }
+@media (max-width: 520px) { .file dl { grid-template-columns: minmax(0, 1fr); } .file dt { padding-top: 6px; } }
+/* Possession timeline strip */
+.finding { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; margin-top: 10px; }
+.strip { display: flex; height: 26px; border-radius: 3px; overflow: hidden; gap: 1px; background: var(--line); margin: 6px 0 4px; }
+.strip span { flex-basis: 0; min-width: 2px; }
+.strip .H { background: var(--home); } .strip .A { background: var(--away); } .strip .D { background: var(--dead); }
+.axis { display: flex; justify-content: space-between; font: .72rem var(--mono); color: var(--muted); }
+.key { display: flex; gap: 14px; flex-wrap: wrap; font-size: .8rem; color: var(--muted); margin-top: 6px; }
+.key i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+.finding ul { margin: 10px 0 0; padding-left: 18px; color: var(--fg); }
+.finding li { margin-bottom: 4px; }
+@media (prefers-reduced-motion: no-preference) { section { animation: in .18s ease-out; } }
+@keyframes in { from { transform: translateY(4px); } to { transform: none; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="match">FC Barcelona v Athletic Club · LaLiga 24/25 · MD2</div>
+    <h1>Possession Project Log</h1>
+    <p>More than a Hack 2027, Phase 1: label every frame <b>H</b>, <b>A</b>, <b>D</b> or <b>X</b>. Our running record of what we did, what we decided and what comes next.</p>
+  </header>
+
+  <dl class="board">
+    <div><dt>Deadline</dt><dd id="days">17 Nov</dd><small>Submission form closes 17 Nov 2026</small></div>
+    <div><dt>Score to beat</dt><dd>0.2433</dd><small>spellF1, baseline_smooth50</small></div>
+    <div><dt>Our best</dt><dd>0.601</dd><small>spellF1 on Metrica, our primary scoreboard (baseline 0.265)</small></div>
+    <div><dt>Now on</dt><dd>Phase 2 done</dd><small>#1 adopted; #2, #3, #4 not adopted. Next: deliverables</small></div>
+  </dl>
+
+  <nav role="tablist">
+    <button role="tab" id="t-log" aria-selected="true" data-tab="log">Steps taken</button>
+    <button role="tab" id="t-decisions" aria-selected="false" data-tab="decisions">Decisions</button>
+    <button role="tab" id="t-next" aria-selected="false" data-tab="next">Next steps</button>
+    <button role="tab" id="t-rules" aria-selected="false" data-tab="rules">Rulebook</button>
+    <button role="tab" id="t-data" aria-selected="false" data-tab="data">Data files</button>
+    <button role="tab" id="t-glossary" aria-selected="false" data-tab="glossary">Glossary</button>
+  </nav>
+
+  <!-- STEPS TAKEN -->
+  <section id="log" role="tabpanel">
+    <h2>Steps taken</h2>
+    <p class="lead">Everything we have done, oldest first. Each entry says what happened and why it mattered.</p>
+    <ol class="log">
+      <li><time>6 Nov 2026</time><h3>Read the whole challenge repository</h3>
+        <p>Read all the docs, the scorer and the baseline. Learned that the board is ranked on spellF1 (whole possessions), not per-frame accuracy, and that the ball is missing on 41% of graded frames.</p></li>
+      <li><time>6 Nov 2026</time><h3>Created the glossary</h3>
+        <p>Plain-language definitions of every technical term, with football analogies. Kept in <code>GLOSSARY.md</code> and in the Glossary tab here.</p></li>
+      <li><time>6 Nov 2026</time><h3>Set how we work</h3>
+        <p>One step at a time, with the what and the why explained at each step. Saved to Claude's memory so it carries across sessions.</p></li>
+      <li><time>6 Nov 2026</time><h3>Received the organisers' rules clarification</h3>
+        <p>Overrides the repo docs. No checking output against the video; no training, fitting or calibrating on the ground truth or the video; all tuning on external data only; no uploading the data to AI services.</p></li>
+      <li><time>6 Nov 2026</time><h3>Emailed the organisers three questions <span class="pill wait">awaiting reply</span></h3>
+        <p>On parameters set from football reasoning, running the scorer on the public 5 minutes, and sharing summary numbers with an AI coding assistant. See Next steps.</p></li>
+      <li><time>6 Nov 2026</time><h3>Unpacked the match data into <code>data/</code></h3>
+        <p>Tracking, homography and Smart Tagging for both cameras are in place and git-ignored. Both videos (13 GB) are still downloading.</p></li>
+      <li><time>6 Nov 2026</time><h3>Removed duplicate files</h3>
+        <p>An old dataset folder in the repo (a copy of the broadcast homography that git was not ignoring) and a duplicate README in Downloads, both moved to the Trash.</p></li>
+      <li><time>6 Nov 2026</time><h3>Started this log</h3>
+        <p>Source file at <code>docs/process-log.html</code>. It will also feed the technical document we have to submit.</p></li>
+      <li><time>6 Nov 2026</time><h3>Set up the Python environment</h3>
+        <p>A project-only virtual environment in <code>.venv</code> (git-ignored) with numpy and pandas from the repo's <code>requirements.txt</code>. Python 3.14.</p></li>
+      <li><time>6 Nov 2026</time><h3>Step 1: studied the public ground truth <span class="pill done">done</span></h3>
+        <p>Script: <code>analysis/01_public_gt.py</code>. Reads only the public 5 minutes. For understanding only; no parameter comes from it.</p>
+        <div class="finding">
+          <div class="strip" aria-label="Possession timeline of the first five minutes">
+            <span class="A" style="flex-grow:6.6" title="Athletic 6.6 s"></span><span class="H" style="flex-grow:8.1" title="Barça 8.1 s"></span><span class="A" style="flex-grow:2.8" title="Athletic 2.8 s"></span><span class="H" style="flex-grow:41.6" title="Barça 41.6 s"></span><span class="A" style="flex-grow:7.4" title="Athletic 7.4 s"></span><span class="D" style="flex-grow:5.5" title="Dead 5.5 s"></span><span class="H" style="flex-grow:28.6" title="Barça 28.6 s"></span><span class="A" style="flex-grow:3.2" title="Athletic 3.2 s"></span><span class="H" style="flex-grow:42.4" title="Barça 42.4 s"></span><span class="A" style="flex-grow:20.0" title="Athletic 20.0 s"></span><span class="H" style="flex-grow:0.8" title="Barça 0.8 s"></span><span class="A" style="flex-grow:16.0" title="Athletic 16.0 s"></span><span class="H" style="flex-grow:1.3" title="Barça 1.3 s"></span><span class="A" style="flex-grow:3.6" title="Athletic 3.6 s"></span><span class="D" style="flex-grow:20.4" title="Dead 20.4 s"></span><span class="A" style="flex-grow:35.7" title="Athletic 35.7 s"></span><span class="H" style="flex-grow:3.5" title="Barça 3.5 s"></span><span class="D" style="flex-grow:18.3" title="Dead 18.3 s"></span><span class="A" style="flex-grow:7.6" title="Athletic 7.6 s"></span><span class="D" style="flex-grow:14.5" title="Dead 14.5 s"></span><span class="H" style="flex-grow:11.8" title="Barça 11.8 s"></span>
+          </div>
+          <div class="axis"><span>0:00</span><span>1:00</span><span>2:00</span><span>3:00</span><span>4:00</span><span>5:00</span></div>
+          <div class="key"><span><i style="background:var(--home)"></i>Barça (H)</span><span><i style="background:var(--away)"></i>Athletic (A)</span><span><i style="background:var(--dead)"></i>Dead ball (D)</span></div>
+          <ul>
+            <li><b>17 possessions</b> (8 Barça, 9 Athletic), from <b>0.8 s</b> to 42.4 s, median 7.6 s. Very short possessions are real.</li>
+            <li><b>12 of 16 changes happen in open play</b>, team to team. Only 4 go through a stoppage.</li>
+            <li><b>4 dead balls</b>, all long: 5.5 to 20.4 s.</li>
+            <li>After a stoppage the <b>other team</b> restarted 3 times out of 4.</li>
+            <li>Athletic kicked off at the first graded frame.</li>
+          </ul>
+          <p><b>Lesson:</b> we need stability (no flicker) without over-smoothing (real possessions can last under a second). A plain smoothing window cannot do both. Five minutes is a tiny sample; these are patterns to check on external data, not facts.</p>
+        </div></li>
+      <li><time>6 Nov 2026</time><h3>Step 2: rebuilt the baseline and ran the scorer <span class="pill done">done</span></h3>
+        <p>Ran <code>starter/baseline.py</code> (under 3 seconds) and <code>evaluation/run_evaluation.py</code>. Only scores and counts came back to Claude; no raw tracking.</p>
+        <div class="finding">
+          <ul>
+            <li><b>Reproduced exactly.</b> All four baseline files came out byte-for-byte identical to the organisers' committed files. Our data and setup are correct.</li>
+            <li><b>Flicker is the killer.</b> No smoothing finds 131 possessions in 5 minutes where there were 17: macroF1 0.60, spellF1 0.04.</li>
+            <li><b>Right count, wrong places.</b> The ±5 s version finds 16 possessions but matches only 7 of the 17 real ones at IoU 0.5.</li>
+            <li><b>Dead ball is the weakest part.</b> smooth50 catches only 314 of 1,469 dead-ball frames and calls 902 of them Barça. The ball often stays visible during stoppages (throw-ins, free kicks), so "ball missing = dead" fails.</li>
+            <li><b>Who is decent, when is bad.</b> Team accuracy while the ball is alive is 0.83 to 0.89, but smooth50 catches only 2 of 20 real changes within ±1 s.</li>
+            <li><b>Validator passes</b> on smooth50. Over the full match it reports 669 possessions, probably about twice too many.</li>
+          </ul>
+          <p><b>Where the gains are:</b> 1) real dead-ball detection, 2) stability without killing short real possessions, 3) better timing of changes.</p>
+        </div></li>
+      <li><time>6 Nov 2026</time><h3>Mapped every data file to its role</h3>
+        <p>Checked each file's structure without printing values. Ranked them core, helper, optional or parked; see the Data files tab. Proposed D9: park the broadcast feed.</p></li>
+      <li><time>6 Nov 2026</time><h3>Step 3: health-checked the tracking data <span class="pill done">done</span></h3>
+        <p>Scripts: <code>analysis/atd_arrays.py</code> (fast reader, cache in git-ignored <code>data/cache/</code>) and <code>analysis/02_tracking_health.py</code>. Aggregates only came back to Claude.</p>
+        <div class="finding">
+          <ul>
+            <li><b>The public window is the best-tracked 5 minutes of the match.</b> Ball visible 88% there; typical 5-minute block 60%, worst 20%. Any method looks better there than it will on the real test.</li>
+            <li><b>Ball blackouts are long.</b> 150 gaps, median 10.7 s; 85% of missing frames sit in gaps over 10 s; almost no 1–3 s gaps. Interpolation will barely help.</li>
+            <li><b>A missing ball partly means a stoppage.</b> Players move at 0.98 m/s during long blackouts against 2.00 m/s normally.</li>
+            <li><b>The ball is still visible on 66% of dead-ball frames</b> (public window). Dead balls show slower ball (40% under 2 m/s vs 15–18%), ball off the pitch (11% vs ~0%) and walking players (1.2 vs 2.0–2.5 m/s), but each overlaps with live play.</li>
+            <li><b>Ball speed field is missing on 92% of visible frames</b>; we compute it from positions instead.</li>
+            <li><b>Ball positions are trustworthy</b> when present: 0.3% impossible jumps.</li>
+            <li><b>Players:</b> 20.5 visible per frame; one team shows more than 11 in 13% of frames; about 11 new track segments per minute. Reason about teams, not individuals.</li>
+          </ul>
+          <p><b>Design consequences:</b> combined-evidence dead-ball detector; context reasoning plus X for long blackouts; external data to measure progress.</p>
+        </div></li>
+      <li><time>6 Nov 2026</time><h3>Step 4: researched external datasets <span class="pill done">done</span></h3>
+        <p>Web research only; no match data involved.</p>
+        <div class="finding">
+          <ul>
+            <li><b>IDSSE / DFL Bundesliga (best):</b> 7 matches, 25 fps, CC-BY 4.0, figshare DOI 10.6084/m9.figshare.28196177. Every frame has <code>BallPossession</code> (home/away) and <code>BallStatus</code> (dead/alive), the same recipe as our ground truth. Operator-corrected, so cleaner than ours.</li>
+            <li><b>Metrica sample data:</b> 3 matches, game 3 in our exact EPTS format. Events only (no per-frame possession). No formal licence ("be responsible", "acknowledge the source"); ask organisers.</li>
+            <li><b>SkillCorner open data:</b> 10 A-League matches, MIT licence, per-frame possession field, but 10 fps broadcast tracking and possibly a different possession definition.</li>
+            <li><b>PFF FC World Cup 2022:</b> 64 matches but sign-up form and no stated licence. Parked.</li>
+          </ul>
+          <p><b>Catch:</b> external data is clean, ours is messy. Plan: remove the ball from external tracking in long blackouts during slow play, matching the pattern measured in Step 3. Also check that each provider's possession labels behave like our public 5 minutes before trusting them.</p>
+        </div></li>
+      <li><time>6 Nov 2026</time><h3>Step 4b: downloaded and checked the IDSSE data <span class="pill done">done</span></h3>
+        <p>2.6 GB, 21 files, all checksums OK, into git-ignored <code>external/idsse/</code>. Scripts: <code>analysis/idsse_parse.py</code> (about 1 minute for all 7 matches) and <code>analysis/03_idsse_labels.py</code>. 668 minutes of labelled football.</p>
+        <div class="finding">
+          <ul>
+            <li><b>Same style:</b> changes in open play 77% (ours 75%); restart to the other team 70% (ours 75%); dead balls never brief (1% under 2 s; ours 0%); dead-ball median 20 s (ours 16 s).</li>
+            <li><b>Our 5 minutes are unusually fluid:</b> 20% dead time against 45% in the Bundesliga; only 5% of Bundesliga 5-minute stretches are that fluid.</li>
+            <li><b>Possession granularity is the open question:</b> DFL has 23 possessions per 5 min (ours 17) and 30% under 2 s (ours 12%). 20% of DFL 5-minute stretches have 17 or fewer, but so few short ones would happen only about 1 time in 13. DFL probably cuts a bit finer; 17 possessions cannot prove it.</li>
+          </ul>
+          <p><b>Verdict:</b> good tuning data. Keep a "merge very brief possessions" switch, decided by football reasoning in Step 5.</p>
+        </div></li>
+      <li><time>6 Nov 2026</time><h3>Clarified: we never train on the public 5 minutes</h3>
+        <p>We have the full match's inputs (tracking, tagging) but answers only for 5 minutes, which the rules forbid training or tuning on. Training uses the 668 labelled Bundesliga minutes.</p></li>
+      <li><time>6 Nov 2026</time><h3>Step 5: wrote our possession rulebook <span class="pill done">done</span></h3>
+        <p>Seven rules in football language (see the Rulebook tab and <code>docs/possession_rules.md</code>). You decided four judgment calls: brief spells need a deliberate action (D16), fouls are dead at the foul (D17), build and compare both X and always-guess versions (D18), throw-in team from two clues (D19).</p></li>
+      <li><time>6 Nov 2026</time><h3>Step 6: built the Bundesliga test bench <span class="pill done">done</span></h3>
+        <p>Scripts: <code>analysis/bench.py</code> (convert, degrade, score with the official <code>evaluate()</code>) and <code>analysis/04_bench_baseline.py</code>. 14 halves, fixed seeds, about 30 seconds.</p>
+        <div class="finding">
+          <ul>
+            <li><b>Mess matches ours:</b> ball missing 40.9% (ours 40.7%), 20.5 players visible (ours 20.5). Gap lengths drawn from our tracking; more blackouts when players are slow.</li>
+            <li><b>Ranking metric behaves like on our match:</b> baseline spellF1 on bench raw 0.075 / ±1 s 0.184 / ±2 s 0.200 / ±5 s 0.173, against published 0.049 / 0.200 / 0.243 / 0.224. Both pick ±2 s on spellF1 and ±1 s on macroF1. The public 5 minutes picked the wrong window; the bench picks the right one.</li>
+            <li><b>Stable across matches:</b> ±2 s scores 0.18 to 0.23 on each of the 7.</li>
+            <li><b>Harder than reality on macroF1</b> (0.46 vs 0.67): in our match the ball goes missing far more during stoppages than our degradation copies, because we may only use player speed, never the answers. Errs on the safe side.</li>
+          </ul>
+        </div></li>
+      <li><time>6 Nov 2026</time><h3>Agreed the three-layer model (D20); more data later only if the learning curve says so</h3>
+        <p>Realistically about 20 clean-licence matches exist, not 60. Trees learn well from our ~1 million frames. We'll train on 2 to 6 matches and add data only if the score is still climbing at 6.</p></li>
+      <li><time>6 Nov 2026</time><h3>Step 7: dead-ball detector <span class="pill done">done</span></h3>
+        <p>Scripts: <code>analysis/features.py</code> (Layer 1 features) and <code>analysis/05_dead_ball.py</code> (gradient-boosted trees, leave-one-match-out). Installed scikit-learn 1.9.1.</p>
+        <div class="finding">
+          <ul>
+            <li><b>Result on the honest bench:</b> spellF1 0.206 → <b>0.278</b> (+0.07, above the 0.04 noise band); macroF1 0.458 → 0.759; dead-ball F1 0.63 → 0.92 (catches 86% of dead frames, 93% precise).</li>
+            <li><b>Ceiling:</b> a perfect dead-ball detector would give 0.356, so we have about half the available gain.</li>
+            <li><b>Trap found:</b> the first result (0.33) was too good. DFL freezes the ball during stoppages (99% of dead frames still, vs 2% in our tracking) and the model learned that. Also the frozen ball sat just outside the lines (24% of seen frames vs our 4.2%).</li>
+            <li><b>Fix:</b> un-freeze the ball on the bench (nearest player carries it, then it moves to the restart spot). Checked with overall statistics, no answers used: ball outside the lines now 5.8% vs our 4.2%. Ball-speed clues stay off because bench ball speeds still differ (median 3.0 vs 5.1 m/s).</li>
+            <li><b>Top clues now:</b> players' speed (now, 6 s, next 3 s), players walking, ball just went out, team separation. All based on players, which look the same in both datasets (2.27 m/s alive in both).</li>
+          </ul>
+        </div></li>
+      <li><time>6 Nov 2026</time><h3>Step 7 refinements: tuned settings and location clues <span class="pill done">done</span></h3>
+        <p>Scripts: <code>analysis/dead_ball.py</code> (reusable detector pieces) and <code>analysis/06_dead_ball_refine.py</code>. Settings chosen by nested leave-one-match-out: each test match uses settings picked on the other six only.</p>
+        <div class="finding">
+          <ul>
+            <li><b>#1 tuned settings, kept:</b> spellF1 0.278 → <b>0.290</b> (+0.012). All 7 folds independently chose the same settings: smooth 0.5 s, cut-off 40%, minimum stoppage 4 s, fill play gaps under 1 s. A small gain, but a consistent one.</li>
+            <li><b>#2 location clues, not kept:</b> +0.001 with default settings, and slightly worse than #1 alone when tuned. No measurable gain on the bench.</li>
+            <li><b>Why #2 may still matter later:</b> in our real tracking, blackouts start near a goal line (24% vs 9% on bench), end near a touchline (23% vs 12%) and end at the centre spot (13% vs 0.2%) far more often. Real blackouts are tied to stoppages more than our bench copies, so the bench cannot show these clues' value. Revisit in the match-flow layer.</li>
+            <li><b>Oddity solved (your insight):</b> the ball reappears at the centre spot on 13% of our blackout frames because of <b>goals</b>. All 4 such blackouts line up with Smart Tagging kick-off tags: 3 after goals (43 s, 61 s and 221 s long: celebrations) and the second-half kick-off. The tracker loses the ball during the celebration and finds it again on the centre spot. Tags fire about 3 s before the ball reappears.</li>
+            <li>The minimum stoppage chosen (4 s) is at the edge of what we tried; longer values may be slightly better. Small follow-up for later.</li>
+          </ul>
+        </div></li>
+      <li><time>6 Nov 2026</time><h3>Explained the 0.356 ceiling</h3>
+        <p>Computed by us on the bench, not in any dataset: true dead/alive from the Bundesliga labels plus the baseline's team guess, scored with the official <code>evaluate()</code>. It shows dead-ball fixes alone cannot pass about 0.36.</p></li>
+      <li><time>6 Nov 2026</time><h3>Step 8a: team frame judge <span class="pill done">done</span></h3>
+        <p>Script: <code>analysis/07_team_judge.py</code>; clues in <code>team_features()</code> in <code>analysis/features.py</code>. Attack direction found by the algorithm from each team's average position. Fixed a bug of ours: derived outputs now live in <code>external/idsse/derived/</code>, not among the match files.</p>
+        <div class="finding">
+          <ul>
+            <li><b>spellF1 0.290 → 0.429</b> (+0.14) with the judge's confidence averaged over 2 s; macroF1 0.763 → 0.835; team right on 87% of live frames (was 75%).</li>
+            <li><b>Flicker, live:</b> the raw judge is more accurate per frame yet scores only 0.241, inventing 7,403 possessions against 3,061 real ones.</li>
+            <li><b>Top clue is team width</b> (the team in possession spreads, the defending team compacts), then block moving forward, nearest player over the last 3 s, and team speed difference.</li>
+            <li><b>Transfer check passed (D23):</b> width 7.5/11.3/16.8 m on bench vs 7.8/11.9/17.6 m on our match (10th/50th/90th percentile); block movement, speed and position also match.</li>
+            <li><b>Now slightly too smooth:</b> 2,476 predicted possessions vs 3,061 real. Balancing is the job of the match-flow referee (8b).</li>
+            <li><b>Ceiling:</b> a perfect team with our dead balls would reach 0.832, so the team is still the biggest lever.</li>
+          </ul>
+        </div></li>
+      <li><time>6 Nov 2026</time><h3>Explained the scores and the "top 20" question</h3>
+        <p>No leaderboard, no past results in this format, unknown field: no top-20 score can be known. Aim: clear, honest gains that carry over, plus bulletproof delivery. Stretch target 0.5+ on the bench. The 0.832 ceiling is "perfect team, our dead balls": a map of where points are, not a target.</p></li>
+      <li><time>6 Nov 2026</time><h3>Step 8b: match-flow referee (HMM + Viterbi) <span class="pill done">done</span></h3>
+        <p>Scripts: <code>analysis/referee.py</code> (4 states: Barça, Athletic, dead-after-Barça, dead-after-Athletic) and <code>analysis/08_referee.py</code>. Settings by nested leave-one-match-out in three rounds, widening the range when the best value sat at its edge.</p>
+        <div class="finding">
+          <ul>
+            <li><b>spellF1 0.429 → 0.449</b> (+0.020); macroF1 0.835 → 0.840. At overlap 0.5: precision 48% → 54%, recall 39% → 39%.</li>
+            <li><b>Settings (D27):</b> switch cost 10, stop cost 160, restart costs 5 and 5, team-model trust 2.0. All 7 folds agreed in round 2; round 3 confirmed a plateau (0.448).</li>
+            <li><b>Restart rule added nothing:</b> equal costs for "other team" and "same team" restarts won; the team model already knows who restarts.</li>
+            <li><b>Still too few possessions:</b> 2,170 vs 3,061 real. The referee cannot create possessions the team model does not see. Next gains must come from better evidence of changes (Layers 1 and 2).</li>
+          </ul>
+        </div></li>
+      <li><time>6 Nov 2026</time><h3>Diagnosed which possessions we miss (your question)</h3>
+        <p>You spotted we are about 900 possessions short. Breakdown of real bench possessions found at overlap 0.5:</p>
+        <div class="finding">
+          <ul>
+            <li><b>By length:</b> under 1 s 2% found (384 possessions) · 1–2 s 10% (535) · <b>2–5 s 27% (934, the biggest opportunity)</b> · 5–10 s 60% (569) · 10–20 s 79% (369) · over 20 s 87% (270).</li>
+            <li><b>By start:</b> after a stoppage 55% found (699) · <b>in open play 34% (2,362, the weak spot)</b>.</li>
+            <li><b>Ours run too long:</b> median 6.4 s vs 3.7 s real; we merge quick turnover sequences.</li>
+            <li><b>Caution on under-2 s:</b> many are likely the Bundesliga's finer touch style (30% under 2 s vs 12% in our ground truth); chasing them risks fake possessions on our match (D16).</li>
+          </ul>
+          <p><b>Focus:</b> quick open-play turnovers lasting 2–5 s (about 680 missed).</p>
+        </div></li>
+      <li><time>6 Nov 2026</time><h3>Step 9: turnover clues, plus a noise stress test <span class="pill done">done</span></h3>
+        <p>Scripts: <code>turnover_features()</code> in <code>analysis/features.py</code>, <code>analysis/09_turnovers.py</code>, <code>analysis/10_jitter_check.py</code>; jitter added to <code>analysis/bench.py</code>.</p>
+        <div class="finding">
+          <ul>
+            <li><b>New clues:</b> close control (a player within 1.5 m), control before and after, who last and next controlled the ball, reception (ball slowing next to a player), shape flip after a turnover.</li>
+            <li><b>Clean bench:</b> spellF1 0.449 → 0.489 (+0.040); 2–5 s possessions found 27% → 34%; precision 54% → 59%.</li>
+            <li><b>Change moments in the referee added nothing</b> (0.488); dropped as redundant once the team judge knows about turnovers.</li>
+            <li><b>Trap check flagged noise:</b> close control is rarer in our tracking (24.8% vs 39.7% of frames) and the controlling team flips more often (29.8% vs 19.4%), because real positions wobble.</li>
+            <li><b>Stress test:</b> with 1.0 m jitter (matches our control share) v1 0.431 → v2 <b>0.451</b> (+0.020); with 1.5 m (matches our flip rate) 0.421 → 0.439 (+0.018). The gain is real but half its clean size; macroF1 rises at both levels.</li>
+            <li><b>From now on the bench has 1 m jitter by default.</b> Honest best on the realistic bench: <b>0.451</b>.</li>
+          </ul>
+        </div></li>
+      <li><time>6 Nov 2026</time><h3>Why only 64% of 5–10 s possessions? (your question: interceptions and bad passes)</h3>
+        <p>Each missed 5–10 s possession classified (clean bench, Step 9 team judge):</p>
+        <div class="finding">
+          <ul>
+            <li>Found 64% · <b>merged into a too-long possession 18%</b> · wrong team 7% · start or end off 7% · called dead 4% · split by flicker 1%.</li>
+            <li><b>In 93 of the 100 merged cases our possession swallowed a real possession of the other team:</b> a missed interception or misplaced pass glues the two neighbours together, so one missed turnover costs three possessions.</li>
+            <li><b>Flicker is solved</b> (1%); we are on the too-smooth side. Cheaper switching would invent fakes elsewhere (tuning already found the best cost), so the fix is better evidence of interceptions and misplaced passes.</li>
+          </ul>
+          <p><b>Your intuition confirmed.</b> Catching an interception rescues up to three possessions, so it is the most valuable thing left to improve.</p>
+        </div></li>
+      <li><time>6 Nov 2026</time><h3>Step 10a: safety-net submission for Barça v Athletic <span class="pill done">done</span></h3>
+        <p>One command: <code>python make_submission.py</code> (42 seconds) writes <code>submissions/submission.csv</code> (git-ignored). Exact versions pinned in <code>requirements-ours.txt</code>.</p>
+        <div class="finding">
+          <ul>
+            <li><b>Pipeline:</b> train the dead-ball detector and team judge (with turnover clues) on all 7 Bundesliga matches (realistic bench, 1 m jitter); our match scaled to 105 × 68 m; clues per half; match-flow referee (D27); goal rule.</li>
+            <li><b>Goal rule fired 3 times</b>, matching the 3 goal celebrations found earlier.</li>
+            <li><b>Valid:</b> official validator OK, 199,319 rows. <b>Reproducible:</b> two runs gave byte-identical files (SHA-1 23c80a4d…).</li>
+            <li><b>What it says:</b> 278 possessions, mean 12.1 s; Barça 61% of live time; 47% of graded frames dead.</li>
+            <li><b>Alignment check on the public 5 minutes (format and label meaning only, never for decisions):</b> F1 Barça 0.91, Athletic 0.92, dead 0.86, so frames and home/away are right. Recorded once: spellF1 0.58, macroF1 0.90 (baseline 0.33 / 0.62). These minutes are the easiest of the match.</li>
+            <li><b>Not acted on:</b> the report shows changes about 0.4 s late; correcting that from the public window would be tuning on answers. Any timing fix will be measured on the bench.</li>
+          </ul>
+        </div></li>
+      <li><time>6 Nov 2026</time><h3>Team name recorded: OffsideFC</h3>
+        <p>The pipeline now writes <code>submissions/OffsideFC.csv</code>; the document will be <code>OffsideFC.pdf</code> (SUBMISSION.md naming rule).</p></li>
+      <li><time>6 Nov 2026</time><h3>Step 9c: touch-event clues for interceptions <span class="pill wait">no gain, not kept</span></h3>
+        <p>Scripts: <code>touch_features()</code> in <code>analysis/features.py</code>, <code>analysis/11_touches.py</code>. Judged on the realistic bench (1 m jitter) with everything retrained on it.</p>
+        <div class="finding">
+          <ul>
+            <li><b>Idea:</b> think in touches, not frames. Group frames with a player within 2.5 m into touch events, give each a team from its average margin, and derive previous and next touch team, touch flip, pass streak.</li>
+            <li><b>Trap check caught a defect:</b> jitter chopped one touch into many (8 touches per 10 s on bench vs 2 on ours; streak median 7 vs 2). Fixed by merging same-team touches under 0.6 s apart (now 0/2/6 vs 0/2/4 and streak 1/1/4 vs 1/2/5). Pass length still differed (4.2 vs 7.9 m), so it was dropped.</li>
+            <li><b>Result:</b> v2 0.450 vs v3 0.449 spellF1 (no gain); merged failures unchanged (20–21%). The turnover clues already carry this information.</li>
+            <li><b>Why interceptions are hard:</b> of the short possessions we miss by swallowing, 39% have the ball completely hidden (vs 24% for those we find). Those are invisible to any ball clue. The rest are partly the Bundesliga's very brief possessions, which may not exist in our ground truth's style.</li>
+            <li><b>Conclusion:</b> diminishing returns. Two approaches (change moments, touch events) measured properly; neither helped. Safety-net file unchanged.</li>
+          </ul>
+        </div></li>
+      <li><time>6 Nov 2026</time><h3>Quick round: timing, model strength, learning curve</h3>
+        <p>Script: <code>analysis/12_quick_round.py</code>, realistic bench, referee D27.</p>
+        <div class="finding">
+          <ul>
+            <li><b>A. Timing:</b> over 2,387 changes our median offset is +1 frame (0.04 s): on time. Shifting labels 5 frames earlier gives 0.4498 → 0.4519, noise. Not adopted. The "0.4 s late" hint from the public 5 minutes was noise; acting on it would have been tuning on answers and wrong.</li>
+            <li><b>B. Model strength:</b> 600 trees at learning rate 0.05 gives 0.448, and with bigger trees 0.448, vs 0.450 today. No gain; keep 300 trees at 0.1.</li>
+            <li><b>C. Learning curve:</b> team judge on 2 / 4 / 6 matches gives 0.427 / 0.435 / <b>0.450</b>. Still rising, so more training matches would likely help (D24 trigger): SkillCorner (MIT) or Metrica sample data once confirmed.</li>
+          </ul>
+        </div></li>
+      <li><time>6 Nov 2026</time><h3>Researched how possession is defined (your question)</h3>
+        <div class="finding">
+          <ul>
+            <li><b>Clarification:</b> the Step 4b difference is DFL's labelling style vs our ground truth (from Metrica's corrected tracking), not LaLiga vs Bundesliga.</li>
+            <li><b>No official DFL or Metrica wording is public.</b> Tracking providers' possession columns "sometimes are not switched as expected" (databallpy docs).</li>
+            <li><b>Bundesliga research uses a touch-based definition:</b> possession "begins when a player touches the ball, and continues until another player touches the ball" (Link et al., PLOS ONE). That explains DFL's many brief possessions.</li>
+            <li><b>Industry standard is control-based (Opta / Stats Perform):</b> "A possession is ended by the opposition gaining control of the ball"; tackles and interceptions only start a sequence "if followed by a controlled action such as a pass or dribble". Matches CHALLENGE.md and our D16.</li>
+          </ul>
+        </div></li>
+      <li><time>6 Nov 2026</time><h3>Converted the Bundesliga labels to control style (your call)</h3>
+        <p>Function: <code>control_style_labels()</code> in <code>analysis/bench.py</code>. An opponent spell sandwiched between two possessions of the same team (no stoppage between), under 3 s, with no player of that team within 1 m of the ball for 0.4 s on the clean positions, is merged back: deflections, 50/50s and ricochets merge; a quick interception followed by control survives.</p>
+        <div class="finding">
+          <ul>
+            <li><b>606 spells merged</b> across 7 matches.</li>
+            <li><b>Style now much closer to our ground truth:</b> possessions per 5 min 22.9 → <b>16.3</b> (ours 17.0); median 3.7 → 5.8 s (ours 7.6); under 2 s 30% → 19% (ours 12%). Open-play changes 77% → 68% (ours 75%).</li>
+            <li><b>Discipline:</b> the conversion numbers (1 m, 0.4 s, 3 s) were set from football reasoning before this comparison and will not be adjusted to match our ground truth more closely; that would be fitting to answers through the back door.</li>
+          </ul>
+        </div></li>
+      <li><time>6 Nov 2026</time><h3>Step 9d: retrained on control-style labels <span class="pill wait">not adopted</span></h3>
+        <p>Script: <code>analysis/13_control_labels.py</code>, realistic bench, team judge retrained, referee re-tuned (nested).</p>
+        <div class="finding">
+          <ul>
+            <li><b>Against control-style labels:</b> old model (trained on DFL labels) 0.517 vs new 0.525 (+0.008, noise-sized).</li>
+            <li><b>Against DFL labels:</b> old 0.450 vs new 0.423 (−0.027).</li>
+            <li><b>The new model buys its tiny gain by being more conservative:</b> 1,684 predicted vs 2,185 true possessions; 2–5 s found 25% vs 34%; its chosen switch cost sat at the edge of the range (28), drifting towards too smooth, the opposite of what we need.</li>
+            <li><b>Good news:</b> the current model scores <b>0.517 when the truth is control-style</b>, which is closer to our real ground truth's style. The 0.450 we quote is probably pessimistic.</li>
+            <li><b>Recommendation:</b> keep the model trained on the original labels (safety-net file unchanged) and use control-style labels as a second scoreboard; accept changes only if neither scoreboard drops.</li>
+          </ul>
+        </div></li>
+      <li><time>6 Nov 2026</time><h3>Organisers said yes to questions 4 and 5; D37 agreed</h3>
+        <p>Metrica's sample data may be used, and we may make external data resemble our tracking using statistics of the provided tracking (confirms D13).</p></li>
+      <li><time>6 Nov 2026</time><h3>Step 9e: added Metrica's 3 sample games</h3>
+        <p>Downloaded into git-ignored <code>external/metrica/</code>; reader <code>analysis/metrica_parse.py</code> (handles Game 3's 11 substitution layouts); bench extended to load and degrade Metrica (<code>analysis/bench.py</code>).</p>
+        <div class="finding">
+          <ul>
+            <li><b>Labels from events, control style:</b> possession = team of the latest controlled action (pass, carry, recovery, set piece, shot); dead from ball out, foul or goal until the next set piece.</li>
+            <li><b>Style very close to our ground truth</b> (same company): 14.6–16.7 possessions per 5 min (ours 17.0), median 7.1–7.2 s (ours 7.6), under 2 s 13–17% (ours 12%), open-play changes 76–78% (ours 75%). Bundesliga: 22.9, 3.7 s, 30%, 77%.</li>
+            <li><b>Tracking already realistic:</b> ball missing 28–52% (ours 41%) and not frozen during stoppages; only player dropouts and 1 m jitter are added.</li>
+            <li><b>One definitional difference found:</b> Metrica logs a deflection straight out of play as a "recovery"; control-style labels then read "same team restarts", so restarts go to the other team only 30–41% (ours 75%, Bundesliga 70%). Events themselves are right (throw-ins to the other team 89–94%, fouled team keeps the free kick 95–100%). Our ground truth likely uses <b>last touch just before the ball goes out</b>. Noted for the document rather than chased with 17 public possessions as evidence.</li>
+          </ul>
+        </div></li>
+      <li><time>6 Nov 2026</time><h3>Metrica transfer test and 10-match training <span class="pill done">adopted (D38)</span></h3>
+        <p>Script: <code>analysis/14_metrica.py</code>.</p>
+        <div class="finding">
+          <ul>
+            <li><b>Dress rehearsal:</b> trained on the 7 Bundesliga matches only, the model scores spellF1 <b>0.537</b> on Metrica (never seen), predicting 842 possessions vs 871 true.</li>
+            <li><b>10-match training (each match tested by a model that never saw it):</b> Metrica 0.537 → <b>0.577</b> (+0.040); Bundesliga 0.450 → 0.441 (−0.009, within noise). Metrica weighted more because it matches our ground truth's style. Your call, 6 Nov.</li>
+            <li><b>OffsideFC.csv rebuilt</b> with 10-match training: 277 possessions, mean 12.2 s, Barça 62% of live time; valid; byte-reproducible (SHA-1 97efac02…). Old v1 files removed.</li>
+          </ul>
+        </div></li>
+      <li><time>6 Nov 2026</time><h3>Full scorecard, every official metric <span class="pill done">done</span></h3>
+        <p>Script: <code>analysis/15_full_report.py</code>. Current system, each match predicted by a model that never saw it. Bundesliga scoreboard includes 1 m jitter, so the baseline there is 0.155, not the clean 0.206.</p>
+        <div class="flow"><pre>                                          METRICA (like our match)    BUNDESLIGA
+metric                                    baseline   OURS  perfect    baseline   OURS
+spellF1 (RANKING)                           0.265   0.577   1.000       0.155   0.441
+  @ IoU 0.3 / 0.5 / 0.7                .38/.26/.14 .69/.59/.43     .27/.15/.06 .59/.44/.29
+  possessions found (recall @0.5)           0.458   0.565   1.000       0.192   0.368
+  our possessions correct (prec @0.5)       0.185   0.623   1.000       0.120   0.560
+macroF1 (TIE-BREAK)                         0.679   0.759   1.000       0.447   0.833
+  F1 Barça / Athletic / dead          .68/.68/.67 .79/.78/.71     .51/.47/.36 .81/.79/.90
+accuracy                                    0.679   0.758   1.000       0.443   0.843
+kappa                                       0.518   0.636   1.000       0.176   0.758
+alive/dead F1                               0.848   0.846   1.000       0.634   0.918
+team accuracy (ball alive)                  0.805   0.924   1.000       0.771   0.874
+changes caught within 0.5 s / 1 s       .08/.15     .30/.46   1.000     .07/.14     .23/.39
+possession-share error (lower better)       0.004   0.005   0.000       0.027   0.004
+fragmentation (1.0 = right count)           2.25    0.97    1.00        1.64    0.69
+possessions (true 871 / 3061)               2151    790      871        4913    2009
+mean possession length s (true 13.0/7.2)     5.6    13.6     13.0        5.9    11.3</pre></div>
+        <div class="finding">
+          <ul>
+            <li><b>Biggest finding:</b> on Metrica, our dead-ball detection is <b>no better than the baseline</b> (alive/dead F1 0.846 vs 0.848). On Metrica, as on our real match, a missing ball is a strong sign of a stoppage; our detector learned mostly from Bundesliga data, where we placed blackouts at random, so it under-uses that clue.</li>
+            <li><b>Team is strong:</b> 92% right when the ball is alive on Metrica.</li>
+            <li><b>Change timing is the other gap:</b> only 30% of changes caught within 0.5 s, 46% within 1 s.</li>
+          </ul>
+        </div></li>
+      <li><time>6 Nov 2026</time><h3>Explained overlap strictness, change timing and fragmentation</h3>
+        <p>Overlap levels test how tight possession start and end must be (a 1 s error barely matters on 10 s, kills a 2 s possession); "changes caught within 0.5 s / 1 s" times each label change; fragmentation counts pieces (1.0 = right number). Story: "how many" solved, "roughly where" good, "exactly when" is the gap.</p></li>
+      <li><time>6 Nov 2026</time><h3>Lever 1: blackouts linked to stoppages <span class="pill done">adopted (D39)</span></h3>
+        <p>Script: <code>analysis/16_dead_link.py</code>; placement in <code>degrade()</code> in <code>analysis/bench.py</code>.</p>
+        <div class="finding">
+          <ul>
+            <li><b>Root cause measured:</b> in Metrica's realistic tracking the ball is missing on 79% of dead frames vs 16% of live (5.0×); our Bundesliga blackouts reached only 1.2×, so 14 of 20 training halves taught that a missing ball means little.</li>
+            <li><b>Fix:</b> Bundesliga blackouts now cover ~79% of each stoppage (ball lost soon after play stops, found just before the restart) plus separate live gaps up to 16% (our gap lengths). Result 78.9% / 16.2% / 4.9×; 44% missing overall (ours 41%). Uses external data only.</li>
+            <li><b>Metrica scoreboard (identical games):</b> spellF1 0.577 → <b>0.601</b>; macroF1 0.759 → 0.785; live/dead F1 0.846 → 0.860 (now beats the baseline's 0.848); dead-ball F1 0.714 → 0.756; changes within 1 s 0.455 → 0.483.</li>
+            <li><b>Trap check passed better than before:</b> blackout lengths 6.3/12.1/22.5 s on the bench vs 6.1/10.7/21.1 s on our match.</li>
+            <li><b>OffsideFC.csv rebuilt:</b> 274 possessions, mean 13.1 s, Barça 62% of live time; 35% of graded frames dead (was 47%); valid; byte-reproducible (SHA-1 33b8face…).</li>
+          </ul>
+        </div></li>
+      <li><time>6 Nov 2026</time><h3>D18 settled: "X when unsure" vs "always guess" <span class="pill done">always guess (D40)</span></h3>
+        <p>Script: <code>analysis/17_x_versions.py</code>. The scorer replaces X with our previous label before spellF1, so X can only help by removing a doubtful short piece.</p>
+        <div class="finding">
+          <ul>
+            <li><b>Metrica:</b> always guess 0.6006 / 0.7850 (spellF1 / macroF1); X inside possessions 0.6006 / <b>0.7654</b> (same spellF1, −0.020 macroF1, 8.8% X); X on doubtful short pieces 0.6021 / 0.7850 (~0% X; chosen: pieces under 1 s with confidence under 0.6).</li>
+            <li><b>Bundesliga:</b> same pattern (0.4908 / 0.4908 / 0.4923).</li>
+            <li><b>Why:</b> X inside a possession is a pure macroF1 loss; the referee rarely produces short doubtful pieces, so there is almost nothing for X to remove.</li>
+          </ul>
+        </div></li>
+      <li><time>6 Nov 2026</time><h3>Wrote an expert review brief</h3>
+        <p><code>docs/expert_review_brief.md</code>: problem, rules, metrics, validation design, full pipeline, exact current scorecard (Metrica spellF1 0.601, macroF1 0.785; Bundesliga 0.491 / 0.856), error diagnosis, failed ideas, limitations and 8 questions for an external ML expert. Aggregate figures only, no match data.</p></li>
+      <li><time>6 Nov 2026</time><h3>Expert feedback received; fallback frozen</h3>
+        <p>Summary in <code>docs/expert_feedback_2026-11-06.md</code>. Current file frozen as <code>submissions/fallback_2026-11-06_OffsideFC.csv</code> (SHA-1 33b8face…).</p>
+        <div class="finding">
+          <ul>
+            <li><b>Critique accepted:</b> our primary scoreboard is 3 matches with labels we derived ourselves, so 0.601 partly measures our own rule; decisions on 0.001–0.024 differences need <b>per-match paired deltas with a bootstrap or sign test</b>; our Bundesliga blackouts are independent of game state (real ones cluster at duels and aerials).</li>
+            <li><b>Missing diagnostic:</b> a ceiling split. Perfect emissions through our decoder, and our emissions with true boundaries fixed, decide whether the frame judge or the referee deserves the remaining time.</li>
+            <li><b>Main ideas:</b> semi-Markov decoder with duration priors (dead balls are never 0.8 s); team-centroid velocity crossing, inferred ball position and pressing collapse for interceptions during blackouts; last touch before the ball goes out as a post-processing rule; boundary refinement or minimum-Bayes-risk decoding; skip SkillCorner; ensembling low priority.</li>
+            <li><b>Checks to add:</b> do track slots ever swap across teams in our tracking; is the output identical with different thread counts.</li>
+          </ul>
+        </div></li>
+      <li><time>6 Nov 2026</time><h3>Phase 1: measure properly <span class="pill done">done</span></h3>
+        <p>Scripts: <code>analysis/paired.py</code> (per-match deltas, sign test, bootstrap 90% CI) and <code>analysis/18_phase1.py</code>.</p>
+        <div class="finding">
+          <ul>
+            <li><b>Ceiling split:</b> current 0.601 (Metrica) / 0.491 (Bundesliga). (a) Perfect emissions through our decoder: 0.998 / 0.998, so the decoder's structure loses nothing. (b) Our emissions with true boundaries fixed: 0.744 / 0.624.</li>
+            <li><b>Meaning:</b> boundaries ("when") are worth about +0.14; the remaining ~0.26 is lost to wrong labels on short possessions ("who"). Both matter. Boundaries: semi-Markov decoder and refinement. Who: turnover evidence (velocity crossing) and robustness to wrong-team tracking.</li>
+            <li><b>Control-style training labels, paired:</b> lose on every match. Metrica 0/3 wins, −0.019 (90% CI −0.021 to −0.016); Bundesliga 0/7, −0.023; even against control-style labels only 2/7 wins. Rejected despite the expert's suggestion (D43).</li>
+            <li><b>Safety check 1, wrong-team tracking found:</b> when a team shows more than 11 players, the other is short 84% of the time (base rate 35%) and the total is exactly 22, so a player is tracked under the wrong team. About 1 episode per minute, median 2.6 s (p90 16 s), 10.8% of graded frames. Never simulated on the bench; to be added in Phase 2.</li>
+            <li><b>Safety check 2, thread count:</b> 1 thread gives the byte-identical file (SHA-1 33b8face…) to 10 threads.</li>
+          </ul>
+        </div></li>
+      <li><time>6 Nov 2026</time><h3>Phase 2 #1: robustness to wrong-team tracking <span class="pill done">adopted (D45)</span></h3>
+        <p>Scripts: <code>add_wrong_team()</code> in <code>analysis/bench.py</code>, <code>analysis/19_wrong_team.py</code>.</p>
+        <div class="finding">
+          <ul>
+            <li><b>Why players get the wrong team:</b> automatic tracking detects people, links them frame to frame, then assigns teams mainly by shirt colour. Errors come from identity switches when players cross and from colour confusion. Your observation: Athletic wore their lilac away kit, and Barça's garnet-and-blue halves blur to purple from a wide camera, so both kits sit in the purple family. Plausible, not provable.</li>
+            <li><b>Simulation:</b> one visible player's positions move to the other team for episodes drawn from our tracking's lengths (median 2.6 s). Only about half of episodes are detectable (players missing anyway), so the simulated share is scaled until the bench shows the same detectable share: 10.7% vs our 10.8%.</li>
+            <li><b>Fair test (both scored on the bench with mix-ups):</b> Metrica +0.0105, 3/3 wins, 90% CI [+0.005, +0.016]; Bundesliga +0.0037, 4/7; all +0.0058, 7/10, CI [+0.002, +0.009]; macroF1 +0.001 (8/10). Mix-ups cost the old model about 0.016 on Metrica; training with them wins back about two-thirds.</li>
+            <li><b>OffsideFC.csv rebuilt:</b> valid, byte-reproducible (SHA-1 7fe033d5…). 249 possessions (was 274), mean 14.2 s, Barça 62%. More conservative switching: watch for under-segmentation; the semi-Markov decoder is next.</li>
+            <li><b>Rules reminder:</b> a screenshot from the provided broadcast video was shared with Claude. The terms forbid sharing video or extracts with AI services; describe what you see in words instead. Only the public kit colours were used.</li>
+          </ul>
+        </div></li>
+      <li><time>6 Nov 2026</time><h3>Phase 2 #2: duration-aware decoder (HSMM) <span class="pill wait">not adopted (D46)</span></h3>
+        <p>Scripts: <code>analysis/hsmm.py</code> (segment-level Viterbi on 0.2 s blocks, duration priors and transitions learned per fold from training matches, boundary refinement to the exact frame; 0.4 s per half) and <code>analysis/20_hsmm.py</code>. Same emissions as the current HMM; realistic bench with mix-ups.</p>
+        <div class="finding">
+          <ul>
+            <li><b>Paired result:</b> Metrica −0.003 (1/3 wins, 90% CI −0.014 to +0.007); Bundesliga +0.007 (6/7, CI −0.001 to +0.013); all +0.004 (7/10, CI includes zero); macroF1 on Metrica −0.002.</li>
+            <li><b>Settings chosen:</b> Metrica-based duration priors on every fold, gamma 0.6, duration weight 2.0, beta 2.0.</li>
+            <li><b>Why no gain:</b> it predicts almost the same number of possessions (786 vs 785; 871 true). Consistent with Phase 1: the decoder is not the bottleneck (0.998 with perfect evidence); when the evidence does not show a short possession, no decoder can create it.</li>
+            <li><b>Implication:</b> remaining effort goes to better evidence for short possessions (team-velocity crossing next), not decoding.</li>
+          </ul>
+        </div></li>
+      <li><time>6 Nov 2026</time><h3>Phase 2 #3: team-movement clues <span class="pill wait">not adopted (D47)</span></h3>
+        <p>Scripts: <code>collective_features()</code> in <code>analysis/features.py</code> (team forward speeds, velocity crossing with ±0.5 m/s hysteresis, 1–2 s flips, inferred ball from players' movement lines, crowding around it, width changes) and <code>analysis/21_collective.py</code>.</p>
+        <div class="finding">
+          <ul>
+            <li><b>(a) All clues:</b> Bundesliga +0.027 (7/7, CI clearly above zero) but <b>Metrica +0.0005 (1/3)</b>; macroF1 Metrica +0.002 (3/3).</li>
+            <li><b>(b) Only clues matching our match:</b> Bundesliga −0.007 (1/7), Metrica +0.003 (2/3, noise).</li>
+            <li><b>Trap check:</b> velocity crossings occur 17.7/min (Bundesliga) and 18.4/min (Metrica) vs <b>8.1/min on our match</b>; even clean external data has 14.5–15.8, so our wobble is not the main cause. Our match's team movement is calmer than every training match (Barça's patient build-up, or tracking damping; cannot tell).</li>
+            <li><b>Decision (agreed):</b> not adopted. Its gain appears only where training data differs most from our match, and not on Metrica.</li>
+          </ul>
+        </div></li>
+      <li><time>6 Nov 2026</time><h3>Phase 2 #4a: last touch before the ball goes out <span class="pill wait">not adopted (D48)</span></h3>
+        <p>Scripts: <code>analysis/last_touch.py</code>, <code>analysis/22_last_touch.py</code>. Item 4b (boundary refinement) skipped: already inside the HSMM test with no gain, and only 7% of misses were shifted boundaries (median offset +1 frame).</p>
+        <div class="finding">
+          <ul>
+            <li><b>Result:</b> fired 47 times; −0.003 on every one of the 10 matches (Metrica 0/3, Bundesliga 0/7); macroF1 about 0.</li>
+            <li><b>Why:</b> the ball is often in a blackout or crowded as it crosses the line, so the last toucher cannot be read reliably; wrong inserted spells cost precision and clip real possessions.</li>
+            <li><b>Side finding (limitation for the document):</b> Bundesliga truth sends 70% of restarts to the other team, our predictions only 43%; Metrica-derived labels say 35%. Conventions disagree, so not safely fixable now. Our file: 56% of 82 stoppages.</li>
+          </ul>
+        </div></li>
+    </ol>
+  </section>
+
+  <!-- DECISIONS -->
+  <section id="decisions" role="tabpanel" hidden>
+    <h2>Decisions</h2>
+    <p class="lead">What we decided and why. If we change one, we add a new decision instead of deleting the old one.</p>
+    <div class="dec">
+      <article><h3><span class="id">D1</span>Design for spellF1, not per-frame accuracy</h3>
+        <p>Our main enemy is fragmentation: splitting one real possession into several. A system that changes label rarely and at the right moment beats one that is slightly more accurate frame by frame.</p>
+        <p class="why">Why: spellF1 decides the ranking. The repo's own baselines show macroF1 barely moves while spellF1 changes five-fold.</p></article>
+      <article><h3><span class="id">D2</span>The public 5 minutes are for understanding and format checks only</h3>
+        <p>We look at them to learn what counts as a possession. We never use their score to choose between versions or settings.</p>
+        <p class="why">Why: it breaks the rules, and with only 17 possessions it picks the wrong answer anyway (smooth125 wins there but loses on the full match).</p></article>
+      <article><h3><span class="id">D3</span>Every setting is tuned on external data <span class="pill wait">pending organiser answer</span></h3>
+        <p>We will find open tracking data from other matches. Whether a value may be set from football reasoning alone is one of our questions to the organisers.</p>
+        <p class="why">Why: required by the organisers' clarification email.</p></article>
+      <article><h3><span class="id">D4</span>Claude does not see raw match data <span class="pill wait">pending organiser answer</span></h3>
+        <p>Claude writes the code; it runs on your machine; only what we need for decisions (pass/fail, counts) is shared, and only once the organisers confirm that is fine.</p>
+        <p class="why">Why: the rules forbid uploading the data to AI services, and Claude is a cloud AI service.</p></article>
+      <article><h3><span class="id">D5</span>Match data lives only in <code>data/</code>, never in a public repo</h3>
+        <p>That folder is git-ignored. Our submission repo must be public, so this matters at every commit.</p>
+        <p class="why">Why: redistributing the data breaks the terms we signed.</p></article>
+      <article><h3><span class="id">D6</span>One step at a time</h3>
+        <p>Finish a step, explain it, record it here, then move on.</p>
+        <p class="why">Why: you need to understand every part, both to win and to write the technical document.</p></article>
+      <article><h3><span class="id">D7</span>Claude may run local scripts that return only scores and counts</h3>
+        <p>Agreed on 6 Nov for Step 2. Scripts read the tracking on your laptop; only scoreboards and summary counts come back, never raw tracking rows.</p>
+        <p class="why">Why: lets us move while the organisers answer question 3. Revisit when they reply.</p></article>
+      <article><h3><span class="id">D8</span>Reproducibility is checked by regenerating files and diffing them</h3>
+        <p>Rebuild the output from scratch and confirm git shows no change, exactly as we did with the baselines.</p>
+        <p class="why">Why: the organisers may rerun our repo, and the file must match byte for byte.</p></article>
+      <article><h3><span class="id">D9</span>Build on tactical tracking and Smart Tagging; park the broadcast feed <span class="pill done">agreed 6 Nov</span></h3>
+        <p>Core: tactical ATD. Helper: Smart Tagging. Optional: tactical homography and video. Parked: everything broadcast.</p>
+        <p class="why">Why: the broadcast feed has no frame mapping to the tactical timeline, and syncing it would eat days we need for the dead-ball and transition problems. Revisit only if we hit a ceiling.</p></article>
+      <article><h3><span class="id">D10</span>Detect dead balls by combining evidence, not one rule</h3>
+        <p>Ball off the pitch, ball slow, players walking, a long ball blackout and Smart Tagging set pieces, weighed together.</p>
+        <p class="why">Why: Step 3 showed every one of these points the right way but overlaps with live play, and the ball is still visible on two-thirds of dead-ball frames.</p></article>
+      <article><h3><span class="id">D11</span>Compute ball speed from positions</h3>
+        <p>Distance moved over 5 frames (0.2 s), in m/s. The tracking's own ball speed field is ignored.</p>
+        <p class="why">Why: that field is missing on 92% of frames where the ball is visible.</p></article>
+      <article><h3><span class="id">D12</span>IDSSE/DFL is our main tuning data <span class="pill done">agreed 6 Nov</span></h3>
+        <p>Metrica sample data as a second check once the organisers confirm; SkillCorner as backup; PFF parked.</p>
+        <p class="why">Why: IDSSE has frame-by-frame possession and ball-in-play labels built the same way as our ground truth, at the same 25 fps, under a clear CC-BY 4.0 licence.</p></article>
+      <article><h3><span class="id">D13</span>Make external data messy before tuning on it <span class="pill done">agreed 6 Nov</span></h3>
+        <p>Remove the ball in long blackouts, mostly during slow play, to resemble our match's tracking.</p>
+        <p class="why">Why: a method tuned on clean tracking may fail on our automatic, uncorrected tracking. Copies the gap pattern from the tracking, never from the ground truth or video; we will ask the organisers to confirm.</p></article>
+      <article><h3><span class="id">D14</span>Measure progress by leave-one-match-out on the Bundesliga data</h3>
+        <p>Tune on 6 matches, score on the 7th, rotate through all 7, average. The public 5 minutes are never used to compare versions.</p>
+        <p class="why">Why: honest measurement on football the model has not seen, within the rules. Step 3 showed the public window is the easiest 5 minutes of our match.</p></article>
+      <article><h3><span class="id">D15</span>Keep a "merge very brief possessions" switch, decided by football reasoning</h3>
+        <p>The DFL labels may count more brief possessions than our ground truth. Whether to merge them is settled in Step 5 from the challenge's own rule (duels and deflections don't change possession), not by score.</p>
+        <p class="why">Why: Step 4b showed a likely but unproven difference in granularity, and we may not settle it with our ground truth.</p></article>
+      <article><h3><span class="id">D16</span>A brief spell counts only if it contains a deliberate action</h3>
+        <p>Controlled pass or carry, however short. A ricochet off a player doesn't count. Settles D15: merge brief spells without such an action.</p>
+        <p class="why">Why: matches the challenge's "controlled possession" rule and keeps real 0.8 s possessions while dropping deflections. Your call, 6 Nov.</p></article>
+      <article><h3><span class="id">D17</span>Fouls make the ball dead at the moment of the foul</h3>
+        <p>Not at the whistle. To be verified as the convention in the Bundesliga labels.</p>
+        <p class="why">Why: how tracking providers usually mark ball status. Your call, 6 Nov.</p></article>
+      <article><h3><span class="id">D18</span>Build both an "X when unsure" and an "always guess" version</h3>
+        <p>Compare them on the Bundesliga data with leave-one-match-out, never on the public 5 minutes.</p>
+        <p class="why">Why: X is free inside possessions on spellF1 but costs macroF1; measuring beats guessing. Your call, 6 Nov.</p></article>
+      <article><h3><span class="id">D19</span>Throw-in team from two clues combined</h3>
+        <p>The player at the touchline with the ball, cross-checked with the team that didn't have it before it went out.</p>
+        <p class="why">Why: Smart Tagging never names the throw-in team. Your call, 6 Nov.</p></article>
+      <article><h3><span class="id">D20</span>Three-layer model: features, frame judge, match-flow referee <span class="pill done">agreed 6 Nov</span></h3>
+        <p>Layer 1: football features per frame from tracking and tagging. Layer 2: gradient-boosted trees give H/A/D probabilities per frame, trained on the messy Bundesliga matches. Layer 3: an HMM with Viterbi turns them into clean possessions, enforcing the rulebook (switches are costly, dead balls last seconds, restarts follow stoppages).</p>
+        <p class="why">Why: trees suit 7 matches of data, are fast, deterministic and explainable; the state model is the cure for flicker. Deep learning would need far more data.</p></article>
+      <article><h3><span class="id">D21</span>The test bench is the judge</h3>
+        <p>Every idea is scored on the 14 degraded Bundesliga halves with the official metric code; we keep a change only if it wins there.</p>
+        <p class="why">Why: it reproduces the baselines' pattern on our match (picks ±2 s like the full-match results), where the public 5 minutes picked the wrong window.</p></article>
+      <article><h3><span class="id">D22</span>Un-freeze the Bundesliga ball during stoppages</h3>
+        <p>The nearest player collects and carries the ball, which then moves to the restart spot over the last 2 seconds. Stoppages are found from the DFL's own labels.</p>
+        <p class="why">Why: DFL parks the ball during stoppages, which never happens in our tracking; models learned that shortcut. Checked against our whole match's overall statistics, no answers used.</p></article>
+      <article><h3><span class="id">D23</span>Only use clues whose behaviour matches between bench and our match</h3>
+        <p>Before trusting a clue, compare its overall distribution on the bench and on our full match (no answers needed). Ball-speed clues are off until they match.</p>
+        <p class="why">Why: a clue that behaves differently on the bench teaches the model something false about our match. Step 7 found two such traps.</p></article>
+      <article><h3><span class="id">D24</span>More training data only if the learning curve is still rising</h3>
+        <p>Train on 2 to 6 Bundesliga matches; add SkillCorner (or others) only if the score still climbs at 6.</p>
+        <p class="why">Why: realistically about 20 clean-licence matches exist, and each new source costs a reader and a style check.</p></article>
+      <article><h3><span class="id">D25</span>Dead-ball settings: smooth 0.5 s, cut-off 40%, minimum stoppage 4 s, fill play gaps under 1 s</h3>
+        <p>Location clues (#2) stay out of the detector for now and are reconsidered in the match-flow layer.</p>
+        <p class="why">Why: these settings won independently on all 7 folds of nested leave-one-match-out (+0.012 spellF1). Location clues showed no measurable gain on the bench, which under-represents the blackout–stoppage link.</p></article>
+      <article><h3><span class="id">D26</span>Team frame judge replaces the baseline's team guess</h3>
+        <p>Gradient-boosted trees on team clues (nearest player sustained, team width, block position and movement, speeds), trained on live Bundesliga frames. Interim smoothing: confidence averaged over 2 s, until the match-flow referee (8b) takes over.</p>
+        <p class="why">Why: +0.14 spellF1 on the bench (0.290 → 0.429), and its clues behave the same on our match (D23 check passed).</p></article>
+      <article><h3><span class="id">D27</span>Match-flow referee replaces the 2-second averaging</h3>
+        <p>4-state HMM with Viterbi; switch 10, stop 160, restart costs 5 and 5, team-model trust 2.0 (stored in <code>analysis/referee.py</code>).</p>
+        <p class="why">Why: +0.020 spellF1 on the bench (0.429 → 0.449), chosen by all 7 folds of nested leave-one-match-out; a third round confirmed a plateau.</p></article>
+      <article><h3><span class="id">D28</span>Optimise spellF1, but never at macroF1's expense without a clear spellF1 gain</h3>
+        <p>spellF1 ranks; macroF1 breaks ties and is a sanity check. A change that raises spellF1 within noise while dropping macroF1 is rejected.</p>
+        <p class="why">Why: the ranking rule, plus protection against fooling ourselves with noise-sized spellF1 gains.</p></article>
+      <article><h3><span class="id">D29</span>Turnover clues join the team judge</h3>
+        <p>Close control, control before and after, last and next controller, reception, shape flip.</p>
+        <p class="why">Why: +0.020 spellF1 on the realistic (jittered) bench at both noise levels tested, with macroF1 up too.</p></article>
+      <article><h3><span class="id">D30</span>No separate change detector in the referee</h3>
+        <p>The referee keeps one fixed switch cost (D27).</p>
+        <p class="why">Why: per-frame "change moments" added nothing once the team judge had turnover clues (0.488 vs 0.489). Simpler wins.</p></article>
+      <article><h3><span class="id">D31</span>The bench includes 1 m of position jitter from now on</h3>
+        <p>Smooth metre-scale wobble on ball and players (<code>BENCH_JITTER</code> in <code>analysis/bench.py</code>). Every later idea is judged on this realistic bench.</p>
+        <p class="why">Why: 1 m matches the close-control share of our tracking (tracking-only check), and clean positions had inflated the turnover gain from +0.020 to +0.040.</p></article>
+      <article><h3><span class="id">D32</span>Always keep a valid, reproducible submission in hand</h3>
+        <p><code>make_submission.py</code> regenerates the file; every improvement must keep it valid and byte-reproducible before it replaces the previous file.</p>
+        <p class="why">Why: a strong entry is secured 11 days before the deadline; later work is upside, not risk.</p></article>
+      <article><h3><span class="id">D33</span>The public 5-minute score is an alignment check, recorded once</h3>
+        <p>Used to confirm frames and home/away are right. Never used to choose between versions or settings.</p>
+        <p class="why">Why: the rules, and Step 3 showed those minutes are the easiest of the match.</p></article>
+      <article><h3><span class="id">D34</span>Touch-event clues are not used; stop chasing interceptions for now</h3>
+        <p>The team judge keeps team and turnover clues only (D29).</p>
+        <p class="why">Why: no measurable gain on the realistic bench (0.449 vs 0.450); 39% of the missed turnovers have no ball at all; further pushing risks fitting the Bundesliga's touch-style labels.</p></article>
+      <article><h3><span class="id">D35</span>Train on control-style labels (Bundesliga labels converted)</h3>
+        <p>Deflection-type opponent spells without control are merged back before training (<code>control_style_labels()</code>; 1 m, 0.4 s, 3 s fixed in advance).</p>
+        <p class="why">Why: the challenge and the industry standard define possession by control, while DFL's labels are touch-based. Your call, 6 Nov. Effect on our real match cannot be measured on the bench; documented as a principled judgment.</p></article>
+      <article><h3><span class="id">D36</span>No timing shift; keep today's model size</h3>
+        <p>Labels are not shifted; the team judge stays at 300 trees, learning rate 0.1.</p>
+        <p class="why">Why: we are on time (median +1 frame) and the shift gain was noise (+0.002); bigger models gave no gain.</p></article>
+      <article><h3><span class="id">D37</span>Revises D35: control-style labels become a second scoreboard, not training labels <span class="pill done">agreed 6 Nov</span></h3>
+        <p>Keep training on DFL labels as published. Report every change on both scoreboards (DFL labels and control-style labels) and accept it only if neither drops.</p>
+        <p class="why">Why: training on converted labels gave +0.008 on control-style (noise) but −0.027 on DFL, by under-predicting possessions. The current model already scores 0.517 on control-style labels.</p></article>
+      <article><h3><span class="id">D38</span>Train the final models on all 10 external matches (7 Bundesliga + 3 Metrica)</h3>
+        <p>Metrica is the primary scoreboard (closest to our ground truth); Bundesliga stays as the second one.</p>
+        <p class="why">Why: +0.040 on Metrica (same company and style as our ground truth) for −0.009 on Bundesliga (within noise). Slightly bends D37's "neither drops" rule; your call, 6 Nov.</p></article>
+      <article><h3><span class="id">D39</span>Bundesliga blackouts follow real tracking's stoppage pattern</h3>
+        <p>Missing on ~79% of stoppage frames and ~16% of live frames, Metrica's measured rates (<code>dead_link=True</code>, <code>METRICA_MISSING</code> in <code>analysis/bench.py</code>).</p>
+        <p class="why">Why: +0.024 spellF1 and +0.042 dead-ball F1 on Metrica (identical games); blackout lengths now match our match better. External data only; organisers confirmed making external data resemble real tracking.</p></article>
+      <article><h3><span class="id">D40</span>Always guess: no X on graded frames (settles D18)</h3>
+        <p>Every graded frame gets H, A or D; X only outside the two halves.</p>
+        <p class="why">Why: X inside possessions leaves spellF1 unchanged and costs 0.02 macroF1; X on doubtful short pieces gained only 0.0015 (noise) because such pieces are rare.</p></article>
+      <article><h3><span class="id">D41</span>Decide on paired per-match deltas, not pooled means <span class="pill done">agreed 6 Nov</span></h3>
+        <p>For every change, report the delta on each of the 10 matches, a sign count and a bootstrap confidence interval; Metrica's 3 matches shown separately.</p>
+        <p class="why">Why: expert critique. Many of our deltas are smaller than the noise; pooled means hid that.</p></article>
+      <article><h3><span class="id">D42</span>Adopt the expert's 11-day plan, with a feature freeze on 13 Nov <span class="pill done">agreed 6 Nov</span></h3>
+        <p>Oracle ceiling split first; then the decoder or frame-judge work it points to; nothing new from 14 Nov; fallback file kept.</p>
+        <p class="why">Why: everything on the list is local to the decoder or features and measurable; the main risk now is an untested change breaking the file on 17 Nov.</p></article>
+      <article><h3><span class="id">D43</span>Keep training on DFL labels as published (D37 confirmed)</h3>
+        <p>Control-style training labels are not used.</p>
+        <p class="why">Why: paired per-match test loses on all 10 matches (Metrica 0/3, Bundesliga 0/7) despite the expert's suggestion.</p></article>
+      <article><h3><span class="id">D44</span>Phase 2 attacks both "when" and "who"</h3>
+        <p>When: semi-Markov decoder with duration priors, then boundary refinement. Who: wrong-team tracking episodes added to the bench, then team-velocity crossing features. Every change must pass the paired per-match test.</p>
+        <p class="why">Why: the ceiling split shows boundaries are worth about +0.14 and short-possession labels about +0.26; wrong-team tracking affects 10.8% of our match's frames.</p></article>
+      <article><h3><span class="id">D45</span>Train with simulated wrong-team tracking episodes</h3>
+        <p><code>wrong_team=True</code> in the final pipeline; episode lengths from our tracking; simulated share scaled so the detectable share matches (factor 2.2).</p>
+        <p class="why">Why: paired test on the bench with mix-ups gives Metrica +0.0105 (3/3, CI above zero) and all matches +0.0058 (7/10, CI above zero), with no macroF1 loss. Our real match has these episodes on 10.8% of frames.</p></article>
+      <article><h3><span class="id">D46</span>Keep the HMM referee; the duration-aware decoder is not adopted</h3>
+        <p><code>analysis/hsmm.py</code> stays in the repository as a tested alternative.</p>
+        <p class="why">Why: no gain on Metrica (−0.003, 1/3), every confidence interval includes zero, small macroF1 loss on Metrica. The evidence, not the decoder, limits short possessions.</p></article>
+      <article><h3><span class="id">D47</span>Team-movement clues are not adopted</h3>
+        <p><code>collective_features()</code> stays in the repository as a tested idea.</p>
+        <p class="why">Why: +0.027 on Bundesliga but no gain on Metrica (primary); the gain comes from velocity crossings that occur about twice as often in every training match as in ours. Your call with Claude's recommendation, 6 Nov.</p></article>
+      <article><h3><span class="id">D48</span>No last-touch-before-out rule; no separate boundary refinement</h3>
+        <p>Post-processing stays as it is.</p>
+        <p class="why">Why: last-touch rule loses on all 10 matches (−0.003); boundary refinement showed no gain inside the HSMM test and shifted boundaries are only 7% of misses.</p></article>
+    </div>
+  </section>
+
+  <!-- NEXT STEPS -->
+  <section id="next" role="tabpanel" hidden>
+    <h2>Next steps</h2>
+    <div class="finding" style="margin-bottom:18px">
+      <p><b>Revised plan after expert review (proposed, D42):</b></p>
+      <ul>
+        <li><b>6–7 Nov:</b> paired-delta tooling (D41); oracle ceiling split (decoder vs frame judge); re-test control-style training labels with paired deltas; slot-swap and thread-count checks.</li>
+        <li><b>8–9 Nov:</b> semi-Markov decoder: duration priors for dead balls, about 1 s minimum for possessions.</li>
+        <li><b>10 Nov:</b> team-centroid velocity crossing (plus inferred ball, pressing collapse if time); last touch before the ball goes out as post-processing.</li>
+        <li><b>11–12 Nov:</b> boundary refinement or minimum-Bayes-risk decoding, whichever the oracle split points to. Start drafting the document.</li>
+        <li><b>13 Nov:</b> feature freeze.</li>
+        <li><b>14–16 Nov:</b> nothing new. Public repo, fresh-clone reproduction, technical document with a per-match variance table.</li>
+        <li><b>17 Nov:</b> submit. Fallback file kept throughout.</li>
+      </ul>
+    </div>
+    <p class="lead">Original plan below, kept for the record.</p>
+    <div class="flow"><pre>HOW WE BUILD IT
+ LEARN / TUNE HERE                         APPLY HERE
+ 7 Bundesliga matches                      Barça v Athletic
+   players + ball  ──(made messy)──►         players + ball + Smart Tagging
+   + possession labels per frame                     │
+          │                                          ▼
+   tune settings, test on unseen match ──►   same model, same settings
+          ▲                                          │
+ FOOTBALL UNDERSTANDING                              ▼
+   states, restarts, control vs touch        H / A / D per frame → submission.csv</pre></div>
+    <div class="steps">
+      <article><div class="n">1</div><div><h3>Study the public ground truth <span class="pill done">done</span></h3>
+        <p>17 possessions, some under a second; most changes in open play; dead balls long and few. See Steps taken.</p></div></article>
+      <article><div class="n">2</div><div><h3>Run the scorer and rebuild the baseline <span class="pill done">done</span></h3>
+        <p>Reproduced the organisers' baselines exactly. Biggest weakness found: dead-ball detection. See Steps taken.</p></div></article>
+      <article><div class="n">3</div><div><h3>Health-check the tracking data <span class="pill done">done</span></h3>
+        <p>Ball blackouts are long; the public window is unrepresentatively well tracked; dead balls need combined evidence. See Steps taken.</p></div></article>
+      <article><div class="n">4</div><div><h3>Find external datasets <span class="pill done">done</span></h3>
+        <p>Best find: IDSSE/DFL Bundesliga, 7 matches with per-frame possession and ball-in-play labels, CC-BY 4.0. See Steps taken.</p></div></article>
+      <article><div class="n">4b</div><div><h3>Download and inspect the IDSSE data <span class="pill done">done</span></h3>
+        <p>7 matches, 668 minutes. Same style for dead balls and transitions; possibly finer possessions. See Steps taken.</p></div></article>
+      <article><div class="n">5</div><div><h3>Write our possession rules in football language <span class="pill done">done</span></h3>
+        <p>Seven rules; four judgment calls decided by you. See the Rulebook tab.</p></div></article>
+      <article><div class="n">6</div><div><h3>Build the test bench on the Bundesliga data <span class="pill done">done</span></h3>
+        <p>Baseline scores 0.200 spellF1 on the bench, behaving like on our match. See Steps taken.</p></div></article>
+      <article><div class="n">7</div><div><h3>Dead-ball detector (R2) <span class="pill done">done</span></h3>
+        <p>spellF1 0.206 → 0.278 on the honest bench, then 0.290 with tuned settings. Restart team moves into Step 8. See Steps taken.</p></div></article>
+      <article><div class="n">8a</div><div><h3>Team frame judge (R4) <span class="pill done">done</span></h3>
+        <p>spellF1 0.290 → 0.429; team right on 87% of live frames. See Steps taken.</p></div></article>
+      <article><div class="n">8b</div><div><h3>Match-flow referee: HMM with Viterbi <span class="pill done">done</span></h3>
+        <p>spellF1 0.429 → 0.449. See Steps taken.</p></div></article>
+      <article><div class="n">9</div><div><h3>Catch quick open-play turnovers (R4) <span class="pill done">done</span></h3>
+        <p>+0.020 on the realistic bench (0.431 → 0.451); 2–5 s possessions found up. See Steps taken.</p></div></article>
+      <article><div class="n">10a</div><div><h3>Safety-net submission <span class="pill done">done</span></h3>
+        <p>Valid, byte-reproducible file from one command. See Steps taken.</p></div></article>
+      <article><div class="n">9c</div><div><h3>Catch interceptions and misplaced passes <span class="pill wait">tried, no gain</span></h3>
+        <p>Detect the ball leaving one team at speed and arriving at the other, robust to tracking noise. <b>Why:</b> 18% of 5–10 s possessions are lost because a missed interception merges them with a neighbour; each catch rescues up to three possessions.</p></div></article>
+      <article><div class="n">9d</div><div><h3>Retrain on control-style labels (D35) <span class="pill wait">not adopted</span></h3>
+        <p>Noise-sized gain on control-style, loss on DFL labels. Becomes a second scoreboard instead (D37, proposed).</p></div></article>
+      <article><div class="n">9e</div><div><h3>More training matches (D24 triggered) <span class="pill done">done, Metrica added (D38)</span></h3>
+        <p>SkillCorner open data (10 matches, MIT, 10 fps) and Metrica sample data once the organisers confirm. <b>Why:</b> the learning curve is still rising (0.427 / 0.435 / 0.450 at 2 / 4 / 6 matches).</p></div></article>
+      <article><div class="n">9b</div><div><h3>Learning curve and the X versions (D24, D18) <span class="pill done">done (D40: always guess)</span></h3>
+        <p>Does more training data help? And X-when-unsure vs always-guess. <b>Why:</b> both were planned; they come after the bigger turnover gain.</p></div></article>
+      <article><div class="n">10</div><div><h3>Apply to Barça v Athletic, set up the public repo, write the document</h3>
+        <p>One command regenerates the file exactly (D8); data excluded; technical document from this log. <b>Why:</b> the deliverables. Deadline 17 Nov.</p></div></article>
+    </div>
+
+    <div class="qs">
+      <h2>Open questions to the organisers <span class="pill wait">sent 6 Nov</span></h2>
+      <ol>
+        <li>May a parameter be set from football reasoning alone, without fitting it to any data?</li>
+        <li>May we run the official scorer on the public 5 minutes purely to check format and frame alignment?</li>
+        <li>Does sharing locally computed summaries (counts, pass/fail) with an AI coding assistant count as uploading the data?</li>
+      </ol>
+      <h2 style="margin-top:18px">Follow-up questions to send <span class="pill next">draft</span></h2>
+      <ol start="4">
+        <li>May we use Metrica's own sample data (github.com/metrica-sports/sample-data) for tuning? It has no formal licence.</li>
+        <li>May we make external data resemble our match's tracking (e.g. remove the ball in gaps with similar lengths) using statistics of the provided tracking, never the ground truth or video?</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- RULEBOOK -->
+  <section id="rules" role="tabpanel" hidden>
+    <h2>Rulebook</h2>
+    <p class="lead">The football rules our algorithm implements, agreed in Step 5. Source file: <code>docs/possession_rules.md</code>. Each rule becomes a piece of logic.</p>
+    <div class="dec">
+      <article><h3><span class="id">R1</span>Three states, always exactly one</h3>
+        <p>H, A or D on every graded frame. A loose ball belongs to the last team in control.</p></article>
+      <article><h3><span class="id">R2</span>When the ball goes dead</h3>
+        <p>Out of play, goal, or referee stoppage. For fouls, dead from the moment of the foul (D17). Detected by combining evidence: ball outside the lines, ball slow, players walking, long ball blackout, Smart Tagging set piece.</p>
+        <p class="why">Stoppages are never brief (0% under 2 s in our 5 min, 1% in the Bundesliga), so a one-second dead blip is noise.</p></article>
+      <article><h3><span class="id">R3</span>Restarts and who gets the ball</h3>
+        <p>Throw-in: team that didn't touch it last (ball at touchline). Corner: attackers (corner flag). Goal kick: defenders (6-yard box). Free kick: team fouled (ball still, wall). Kick-off: team that conceded (centre spot). Type from Smart Tagging, or from ball geometry when tagging misses it.</p>
+        <p class="why">Throw-ins: combine the player at the touchline with "the team that didn't have it before" (D19). Fallback: restart goes to the other team 70–75% of the time.</p>
+        <p class="why">Goals: a long ball blackout that ends with the ball on the centre spot is a goal stoppage, so the whole blackout is dead, and the team that conceded (opposite of the team in possession before) kicks off. Smart Tagging kick-off tags fire about 3 s before the ball reappears. Written as a general rule, never as specific frames.</p></article>
+      <article><h3><span class="id">R4</span>Open-play changes need control</h3>
+        <p>An opponent receives the ball and makes a deliberate pass or carry. However short, a spell with a deliberate action counts (D16); a ricochet doesn't. Touches, deflections, 50/50s and aerial duels without control don't change possession; loose balls stay with the last team in control.</p></article>
+      <article><h3><span class="id">R5</span>When the ball is missing</h3>
+        <p>Same team before and after: they kept it. Players walking: probably a stoppage. Different team after: place the change with team shape and tagging phases. Unsure frames: both versions were built and compared (D18); always guessing won (D40).</p></article>
+      <article><h3><span class="id">R6</span>Distrust bad tracking</h3>
+        <p>Ignore impossible ball jumps; reason about teams, never individual players; ball speed from positions.</p></article>
+      <article><h3><span class="id">R7</span>Stay inside the competition rules</h3>
+        <p>Kick-offs and half starts detected by the algorithm, never typed in from the video. Same settings everywhere; tune only on external data.</p></article>
+    </div>
+  </section>
+
+  <!-- DATA FILES -->
+  <section id="data" role="tabpanel" hidden>
+    <h2>Data files</h2>
+    <p class="lead">Every file in <code>data/</code>, what it is, and the part it plays in our algorithm. All of it is git-ignored and never leaves your laptop.</p>
+    <div class="flow"><pre>TACTICAL CAMERA (reference: row i of our CSV = frame i)
+  atd.xml  ── team sheet ──┐
+                           ├─► who is where, every frame ─┐
+  atd.txt  ── positions ───┘                              ├─► OUR ALGORITHM ─► submission.csv
+  smart_tagging.xml ── automatic match notes ─────────────┘     (H / A / D / X per frame)
+  homography.csv ── pitch ↔ video translator ─► tactical.mp4  (understanding, optional)
+
+BROADCAST CAMERA (TV feed, own timeline, not synced): same file types, parked</pre></div>
+
+    <div class="groupt">Tactical camera</div>
+    <div class="files">
+      <article class="file"><header><h3>BAR-ATH_tactical_atd.xml</h3><span class="pill core">core</span><span class="meta">59 KB</span></header><dl>
+        <dt>What</dt><dd>Tracking metadata: two teams, frame rate, pitch size, and 46 track slots, each assigned to a team.</dd>
+        <dt>Analogy</dt><dd>The team sheet, but the "players" are numbered lanes with a team colour and no names.</dd>
+        <dt>Our use</dt><dd>Turns slot numbers into Barça or Athletic. Every "nearest Barça player" rule depends on it.</dd></dl></article>
+      <article class="file"><header><h3>BAR-ATH_tactical_atd.txt</h3><span class="pill core">core</span><span class="meta">196 MB · 199,319 lines</span></header><dl>
+        <dt>What</dt><dd>One line per frame: <code>frame_id : 46 × (x, y, speed) : ball (x, y, speed)</code>. Positions 0 to 1; missing values are NaN.</dd>
+        <dt>Analogy</dt><dd>A GPS vest on every player and the ball, 25 times a second, but the ball's vest cuts out 41% of the time.</dd>
+        <dt>Our use</dt><dd>The main input. Who is near the ball; dead ball (ball outside the lines, ball still, everyone slowing); changes (sudden ball speed or direction changes); team shape when the ball is missing.</dd>
+        <dt>Watch out</dt><dd>Ball missing on 41% of graded frames; slots swap identity; frame_id starts at 1, so subtract 1 for the submission row.</dd></dl></article>
+      <article class="file"><header><h3>BAR-ATH_tactical_smart_tagging.xml</h3><span class="pill help">strong helper</span><span class="meta">261 KB · 638 entries</span></header><dl>
+        <dt>What</dt><dd>Automatic tactical notes: start and end in seconds, a code (SET PIECES, BUILD UP…), labels for Team, Half, Type.</dd>
+        <dt>Analogy</dt><dd>A fast but fallible assistant analyst's notebook.</dd>
+        <dt>Our use</dt><dd>Second witness. Set pieces mark the end of a dead ball and usually name the restarting team (throw-ins are N/A); phase tags name the attacking team; goals mean a long stoppage then a kickoff.</dd>
+        <dt>Watch out</dt><dd>Automatic, so it makes mistakes. Phases are not possessions; use as evidence, never copy across.</dd></dl></article>
+      <article class="file"><header><h3>BAR-ATH_tactical_homography.csv</h3><span class="pill opt">optional</span><span class="meta">23 MB · 199,319 rows</span></header><dl>
+        <dt>What</dt><dd>Per frame: a 3×3 matrix, its reprojection error, and a valid flag (valid on every frame).</dd>
+        <dt>Analogy</dt><dd>What TV graphics use to draw an offside line on the grass.</dd>
+        <dt>Our use</dt><dd>Only if we work with the video: drawing tracking on it to understand situations, or our own ball detector later. Idea to test: where the camera points may hint at where the ball is.</dd>
+        <dt>Watch out</dt><dd>Never used to check our output against the video (organisers' rule).</dd></dl></article>
+      <article class="file"><header><h3>BAR-ATH_tactical.mp4</h3><span class="pill opt">optional</span><span class="meta">13 GB · downloading</span></header><dl>
+        <dt>What</dt><dd>The wide tactical camera, 199,319 frames at 25 fps.</dd>
+        <dt>Our use</dt><dd>Watching to understand what situations look like in the tracking. Possibly input to our own detector.</dd>
+        <dt>Watch out</dt><dd>No training on it, no checking our output against it.</dd></dl></article>
+    </div>
+
+    <div class="groupt">Broadcast camera</div>
+    <div class="files">
+      <article class="file"><header><h3>BAR-ATH_broadcast_atd.xml · _atd.txt · _homography.csv · .mp4</h3><span class="pill park">parked</span><span class="meta">164,488 frames</span></header><dl>
+        <dt>What</dt><dd>The TV feed, with the same four file types. Its own timeline with cuts and replays; homography usable on 65.8% of frames.</dd>
+        <dt>Our use</dt><dd>Maybe a second view of the ball when the tactical tracking loses it.</dd>
+        <dt>Watch out</dt><dd>No mapping to tactical frames is provided. Syncing the two timelines is a project in itself. See proposed decision D9.</dd></dl></article>
+    </div>
+    <p class="lead" style="margin-top:14px"><code>data/README.md</code> only holds unpacking instructions and plays no part in the algorithm.</p>
+  </section>
+
+  <!-- GLOSSARY -->
+  <section id="glossary" role="tabpanel" hidden>
+    <h2>Glossary</h2>
+    <p class="lead">Every technical term, in plain language. <span class="star">★</span> marks the ones that decide the score.</p>
+    <label for="q" class="sr" hidden>Search the glossary</label>
+    <input id="q" class="search" type="search" placeholder="Search terms, e.g. IoU">
+    <p class="empty" id="none" hidden>No term matches that search.</p>
+
+    <div class="gsec"><h3>The basic building blocks</h3><dl>
+      <div class="term"><dt>Frame</dt><dd>One still image of the video. 25 frames per second, so 1,500 frames is a minute. The match is 199,319 frames and we label every one.</dd></div>
+      <div class="term"><dt>Label</dt><dd>Our answer for one frame: <b>H</b> Barça have it, <b>A</b> Athletic have it, <b>D</b> ball dead, <b>X</b> we decline to answer.</dd></div>
+      <div class="term"><dt>Graded frames</dt><dd>The frames that are scored: the two halves, 158,857 frames. Pre-match, half-time and post-match are ignored.</dd></div>
+      <div class="term"><dt>Ground truth (GT)</dt><dd>The correct answers we are scored against, like the referee's notebook. Built from human-corrected tracking. We see only the first 5 minutes.</dd></div>
+      <div class="term"><dt>Possession / spell / segment</dt><dd>A segment is any unbroken run of one label. A possession (the scorer says "spell") is a run of H or of A. <span class="eg">H H D D H H is two possessions: the throw-in in the middle ends the first one.</span></dd></div>
+      <div class="term"><dt>Transition / hand-over</dt><dd>The moment possession switches team: a tackle won, an interception, a misplaced pass collected. The hardest and most important frames.</dd></div>
+      <div class="term"><dt>Dead ball</dt><dd>Ball not in play: out of bounds, a foul, offside, a goal celebration, before kickoff. Label D. We never say who "owns" a dead ball.</dd></div>
+    </dl></div>
+
+    <div class="gsec"><h3>How we are scored</h3><dl>
+      <div class="term"><dt>Precision</dt><dd>Of the things I claimed, how many were right? <span class="eg">A striker who scores 3 from 10 shots has 30% precision.</span></dd></div>
+      <div class="term"><dt>Recall</dt><dd>Of the things that really happened, how many did I catch? <span class="eg">A keeper who saves 7 of 10 shots on target has 70% recall.</span></dd></div>
+      <div class="term"><dt>F1 score</dt><dd>One number combining precision and recall: 2 × P × R ÷ (P + R). High only when both are high, so you can't game it by being cautious or reckless. 0 to 1.</dd></div>
+      <div class="term"><dt>Per-class F1</dt><dd>F1 computed for one label at a time, e.g. "how good am I at saying H".</dd></div>
+      <div class="term"><dt>macroF1<span class="star">★</span></dt><dd>The tie-breaker. The average of the F1 for H, A and D, computed frame by frame. Roughly "how many minutes did I label right". <span class="eg">Weakness: one flickering frame barely hurts it, even though it invents two fake possessions.</span> Floor about 0.16.</dd></div>
+      <div class="term"><dt>IoU (temporal)</dt><dd>Intersection over Union: how well two time intervals overlap. <span class="eg">Real possession frames 100–200, mine 120–220: 80 shared ÷ 120 covered = 0.67.</span></dd></div>
+      <div class="term"><dt>Threshold</dt><dd>A cut-off. "Matched at IoU 0.5" means the overlap must be at least 0.5 to count as the same possession.</dd></div>
+      <div class="term"><dt>spellF1<span class="star">★</span></dt><dd>The ranking metric. Cut real and predicted labels into possessions; pair each prediction with at most one real possession of the same team, best overlap first; a pair is a hit above the IoU threshold; take F1; average over thresholds 0.3 to 0.7. <span class="eg">"Did I find each real possession, with roughly the right start and end, without inventing fake ones?"</span></dd></div>
+      <div class="term"><dt>Flickering<span class="star">★</span></dt><dd>Our answer switching between teams for a few frames when nothing changed on the pitch. <span class="eg">An Athletic player jogs past the Barça player on the ball, is 10 cm closer for 3 frames, and "nearest player" hands Athletic the ball: H H H A A H H turns 1 possession into 3.</span> Cheap on macroF1, very expensive on spellF1. The trick is telling a real brief win of the ball from a player jogging past.</dd></div>
+      <div class="term"><dt>Fragmentation</dt><dd>Breaking one real possession into several predicted ones. The number-one enemy of spellF1: one wrong frame turns 1 possession into 3.</dd></div>
+      <div class="term"><dt>Abstention (X) and forward-fill<span class="star">★</span></dt><dd>macroF1 counts X as wrong. spellF1 first replaces each X with your previous label. <span class="eg">So X inside a possession is free; X across a hand-over drags the old team past the change.</span></dd></div>
+      <div class="term"><dt>Confusion matrix</dt><dd>A table with the true answer on each row and what we said on each column. The diagonal is what we got right; everything else shows exactly which mistake we make. <span class="eg">Row "truly D", column "we said H" = dead balls we called Barça possession.</span></dd></div>
+      <div class="term"><dt>Support</dt><dd>How many true examples of a class there are. In the public 5 minutes: H 3,454 frames, A 2,577, D 1,469.</dd></div>
+      <div class="term"><dt>Kappa</dt><dd>Accuracy corrected for lucky guessing. 0 means no better than chance, 1 is perfect.</dd></div>
+      <div class="term"><dt>transF1 / latency</dt><dd>transF1: F1 for catching the moments possession changes, within ±1 second. Latency: how many frames early (−) or late (+) our changes land.</dd></div>
+      <div class="term"><dt>Team accuracy</dt><dd>When the ball is truly alive, how often we name the right team. Measures "who" without "when".</dd></div>
+      <div class="term"><dt>Share error</dt><dd>How far off our overall possession percentage is. The real public 5 minutes are 57% Barça.</dd></div>
+      <div class="term"><dt>Median / percentile (p90)</dt><dd>Sort all values; the median is the middle one, p90 the one 90% of the way up. <span class="eg">"Gap median 10.7 s" means half of all ball blackouts are longer than 10.7 seconds.</span> Less fooled by extreme values than an average.</dd></div>
+      <div class="term"><dt>Noise band</dt><dd>Differences too small to mean anything. For spellF1, gaps under about 0.04 on the full match.</dd></div>
+      <div class="term"><dt>Bootstrap</dt><dd>Resampling the possessions many times and rescoring to see how much a score wobbles by luck. If two systems' ranges overlap, neither is clearly better.</dd></div>
+    </dl></div>
+
+    <div class="gsec"><h3>The data we have</h3><dl>
+      <div class="term"><dt>Tracking data (ATD)</dt><dd>Automatic Tracking Data: position and speed of each detected player and the ball, every frame, produced by software watching the video. Nobody cleaned it.</dd></div>
+      <div class="term"><dt>Normalised coordinates</dt><dd>Positions from 0 to 1 instead of metres. Multiply by 105.3 (length) and 68 (width) to get metres.</dd></div>
+      <div class="term"><dt>Track slot / tracklet</dt><dd>The tracker's numbered lanes, Track 1 to Track 46. A slot is "some player I'm following right now", not a fixed person. We do know each slot's team.</dd></div>
+      <div class="term"><dt>Identity switch</dt><dd>When the tracker swaps two players' slots, e.g. after they cross.</dd></div>
+      <div class="term"><dt>NaN</dt><dd>"Not a Number", the value for missing. The ball is NaN on 41% of graded frames.</dd></div>
+      <div class="term"><dt>Homography</dt><dd>A 3×3 table of numbers per frame converting between a point on the pitch and its pixel in the video.</dd></div>
+      <div class="term"><dt>Reprojection error</dt><dd>How badly a homography misses. Lower is more trustworthy.</dd></div>
+      <div class="term"><dt>Smart Tagging</dt><dd>Metrica's automatic labels for tactical phases (Build Up, Set Pieces, Transitions…), each with times and usually a team. Hints, not answers.</dd></div>
+      <div class="term"><dt>Tactical vs broadcast</dt><dd>Tactical: wide fixed camera, our reference timeline. Broadcast: the TV feed with cuts and replays, on a different timeline. Optional.</dd></div>
+    </dl></div>
+
+    <div class="gsec"><h3>ML and modelling words</h3><dl>
+      <div class="term"><dt>Algorithm / model</dt><dd>A recipe that turns inputs (tracking) into outputs (labels). A model usually has numbers learned from data; an algorithm can be hand-written rules.</dd></div>
+      <div class="term"><dt>Rule-based / heuristic</dt><dd>Hand-written logic from understanding the game. <span class="eg">"If the ball leaves the pitch lines, it's dead."</span></dd></div>
+      <div class="term"><dt>Feature</dt><dd>A number computed from raw data that helps the decision. <span class="eg">Distance from ball to nearest Barça player; average speed of all 22 players.</span></dd></div>
+      <div class="term"><dt>Baseline</dt><dd>The simplest reasonable solution, used as a yardstick. Here: nearest player to the ball, then smoothing. spellF1 0.2433.</dd></div>
+      <div class="term"><dt>Smoothing / majority vote</dt><dd>Fixing flicker by looking at neighbouring frames. A ±50 window looks 2 seconds either side and takes the most common label.</dd></div>
+      <div class="term"><dt>Hyperparameter</dt><dd>A setting you choose rather than the model learning it, e.g. the smoothing window size.</dd></div>
+      <div class="term"><dt>Tuning</dt><dd>Trying different hyperparameter values and keeping the best-scoring one.</dd></div>
+      <div class="term"><dt>Fitting / calibrating</dt><dd>Adjusting a model's numbers so its outputs line up with reference data. Not allowed on the ground truth or the video.</dd></div>
+      <div class="term"><dt>External data</dt><dd>Data about other matches that we have the licence to use. The only data we may train or tune on.</dd></div>
+      <div class="term"><dt>Licence (CC-BY, MIT)</dt><dd>The legal terms for using a dataset. CC-BY 4.0: use freely, but credit the source. MIT: use freely, keep the copyright notice. No licence at all means unclear rights, so ask.</dd></div>
+      <div class="term"><dt>Domain gap</dt><dd>The difference between the data you tune on and the data you're tested on. <span class="eg">Like preseason friendlies on perfect pitches before a season of muddy away games.</span> Ours: clean external tracking vs our messy automatic tracking.</dd></div>
+      <div class="term"><dt>Data degradation</dt><dd>Deliberately making clean data messy (e.g. deleting the ball in long blackouts) so it resembles the data we'll face. Shrinks the domain gap.</dd></div>
+      <div class="term"><dt>Overfitting</dt><dd>Getting very good at the examples you checked and worse at everything else. <span class="eg">Like drilling set pieces against one opponent's exact setup.</span></dd></div>
+      <div class="term"><dt>Training / validation / test</dt><dd>Training: examples a model learns from. Validation: examples used to choose between versions. Test: the final exam. The full match is our test.</dd></div>
+      <div class="term"><dt>Leave-one-match-out</dt><dd>Tune on all matches but one, score on the one left out, rotate so every match gets a turn, then average. <span class="eg">Like judging a manager's system on matches they didn't prepare for.</span> A form of cross-validation.</dd></div>
+      <div class="term"><dt>Checksum</dt><dd>A fingerprint of a file. If our download's fingerprint matches the publisher's, the file arrived complete and unchanged.</dd></div>
+      <div class="term"><dt>Supervised / unsupervised</dt><dd>Supervised: learning from examples with answers attached. Unsupervised: finding patterns without answers.</dd></div>
+      <div class="term"><dt>Pseudo-labels</dt><dd>Labels produced by an algorithm, then used to train another model. Allowed if no human decided any of them.</dd></div>
+      <div class="term"><dt>Gradient-boosted trees</dt><dd>A model made of hundreds of small yes/no question trees ("is the nearest Athletic player within 1.5 m?"). Each new tree fixes the mistakes of the ones before; their votes add up to a probability. Strong on tables of features, fast, and explainable.</dd></div>
+      <div class="term"><dt>Probability</dt><dd>How likely something is, from 0 to 1 (or 0–100%). The frame judge says e.g. "H 70%, A 20%, D 10%" instead of a single hard answer, so the referee layer can weigh how sure it is.</dd></div>
+      <div class="term"><dt>Test bench</dt><dd>Our scoreboard: 14 Bundesliga halves made messy like our match, scored by the official metric code. Every idea is judged here.</dd></div>
+      <div class="term"><dt>Learning curve</dt><dd>The score plotted against how much training data the model had. Still rising: more data would help. Flat: spend the effort elsewhere.</dd></div>
+      <div class="term"><dt>Data artefact / shortcut</dt><dd>A pattern caused by how a dataset was made, not by football. <span class="eg">The Bundesliga data freezes the ball during stoppages; a model that learns "frozen ball = dead" fails on real tracking.</span></dd></div>
+      <div class="term"><dt>Permutation importance</dt><dd>How much a clue matters: shuffle that one clue's values and see how far the score drops. A big drop means the model leans on it.</dd></div>
+      <div class="term"><dt>Nested leave-one-match-out</dt><dd>Choosing settings without peeking at the test match: for each match left out, the settings are picked on the other six only, then applied to it. Keeps the reported score honest.</dd></div>
+      <div class="term"><dt>Team shape (width, block)</dt><dd>How spread out a team is (width = spread across the pitch) and where its players sit on average (block). <span class="eg">In possession a team stretches wide; out of possession it gets compact.</span> Our top clue for "which team" because it works even when the ball is missing.</dd></div>
+      <div class="term"><dt>Over- / under-segmenting</dt><dd>Predicting too many possessions (flicker) or too few (merging real short ones). spellF1 punishes both.</dd></div>
+      <div class="term"><dt>Jitter / measurement noise</dt><dd>Small random wobble in tracked positions. Real automatic tracking places a player or the ball about a metre off, so "a player within 1.5 m" is less reliable than in clean data.</dd></div>
+      <div class="term"><dt>Stress test</dt><dd>Deliberately making the test harder (here, adding jitter) to see whether a gain survives. If it shrinks to nothing, it was an artefact of clean data.</dd></div>
+      <div class="term"><dt>Ceiling</dt><dd>The best score a part of the system could ever give, measured by plugging in the true answer for that part (on external data only).</dd></div>
+      <div class="term"><dt>Random seed</dt><dd>A fixed starting number for anything random (like where the fake blackouts go), so the result is identical every run.</dd></div>
+      <div class="term"><dt>State model / HMM</dt><dd>Hidden Markov Model: assumes the match is always in one hidden state (Barça ball, Athletic ball, dead) and that states persist; switching has a cost. A natural fit for long possessions and rare switches.</dd></div>
+      <div class="term"><dt>Viterbi algorithm</dt><dd>The standard way to find the most believable sequence of states in an HMM.</dd></div>
+      <div class="term"><dt>Interpolation</dt><dd>Filling a gap with a line between the known points either side, e.g. the ball between two sightings.</dd></div>
+      <div class="term"><dt>Library (numpy, pandas)</dt><dd>Ready-made code we import instead of writing ourselves. numpy does fast maths on big arrays of numbers; pandas works with tables, like a programmable spreadsheet.</dd></div>
+      <div class="term"><dt>Cache</dt><dd>A saved, quick-loading copy of a slow result. We parse the 196 MB tracking file once and keep the result in <code>data/cache/</code> (git-ignored).</dd></div>
+      <div class="term"><dt>Virtual environment (.venv)</dt><dd>A private box of Python libraries for this project only, so versions don't clash with anything else on the laptop. Git ignores it.</dd></div>
+      <div class="term"><dt>Deterministic / reproducible</dt><dd>Same code plus same data gives exactly the same file every time. Required: the organisers may rerun our repo.</dd></div>
+    </dl></div>
+  </section>
+</div>
+
+<script>
+(function () {
+  var tabs = document.querySelectorAll('nav button');
+  var names = ['log', 'decisions', 'next', 'rules', 'data', 'glossary'];
+  function show(name) {
+    if (names.indexOf(name) < 0) name = 'log';
+    tabs.forEach(function (b) { b.setAttribute('aria-selected', b.dataset.tab === name ? 'true' : 'false'); });
+    names.forEach(function (n) { document.getElementById(n).hidden = n !== name; });
+  }
+  tabs.forEach(function (b) { b.addEventListener('click', function () { location.hash = b.dataset.tab; show(b.dataset.tab); }); });
+  window.addEventListener('hashchange', function () { show(location.hash.slice(1)); });
+  show(location.hash.slice(1));
+
+  // Days left to the deadline (17 Nov 2026, end of day)
+  var left = Math.ceil((new Date('2026-11-17T23:59:59') - new Date()) / 864e5);
+  var d = document.getElementById('days');
+  if (left > 0) d.textContent = left + (left === 1 ? ' day' : ' days');
+  else if (left === 0) d.textContent = 'Today';
+  else d.textContent = 'Closed';
+
+  // Glossary search
+  var q = document.getElementById('q'), none = document.getElementById('none');
+  q.addEventListener('input', function () {
+    var s = q.value.trim().toLowerCase(), any = false;
+    document.querySelectorAll('.gsec').forEach(function (sec) {
+      var vis = 0;
+      sec.querySelectorAll('.term').forEach(function (t) {
+        var m = !s || t.textContent.toLowerCase().indexOf(s) >= 0;
+        t.hidden = !m; if (m) vis++;
+      });
+      sec.hidden = vis === 0; if (vis) any = true;
+    });
+    none.hidden = any;
+  });
+})();
+</script>

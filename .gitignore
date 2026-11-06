@@ -1,0 +1,26 @@
+# Provided match data (gated, licensed for the competition only) -- never commit
+data/*
+!data/README.md
+*.mp4
+
+# External datasets (downloaded by fetch_external.py; licensed separately, cited not redistributed)
+external/
+
+# Generated submissions and scorer output (a full set of labels for the match)
+submissions/
+evaluation/results/
+evaluation/reports/
+evaluation/scoreboard.csv
+
+# Private ground truth, if it ever appears
+*_possession_gt.csv
+*_possession_gt_meta.json
+
+# Python / editors
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.DS_Store
+.idea/
+.vscode/
